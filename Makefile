@@ -1,5 +1,5 @@
-NASM = nasm
-QEMU = qemu-system-x86_64
+NASM = ../install/bin/nasm
+QEMU = ../install/bin/qemu-system-x86_64
 
 ifeq ($(shell uname -s),Darwin)
 	CC = x86_64-pc-elf-gcc
@@ -99,17 +99,18 @@ $(GRUB_CFG):
 	echo "$$GRUB_CFG_BODY" > $@
 
 $(ISO): $(KERNEL) $(INITRD) $(GRUB_CFG)
-	grub-mkrescue -o $@ $(ISO_DIR)
+	grub2-mkrescue -o $@ $(ISO_DIR)
 
 run: ## run the OS
 run: $(ISO)
-	$(QEMU) -cdrom $<
+    $(QEMU) -cdrom $< -vnc 100.81.235.146:0
 .PHONY: run
 
 debug: ## build and run the OS in debug mode
 debug: CFLAGS += $(DEBUG_CFLAGS)
 debug: $(ISO)
-	$(QEMU) -cdrom $< -serial file:/tmp/serial.log -m 1G
+	$(QEMU) -cdrom $< -serial file:/tmp/serial.log -m 1G -vnc 100.81.235.146:0
+
 .PHONY: debug
 
 clean: ## remove build artifacts
