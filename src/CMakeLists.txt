@@ -27,6 +27,9 @@ set(BUILD_FLAGS_COMPILE_KERNEL -ffreestanding -nostdlib -fno-builtin
 
 target_compile_options(kernel PRIVATE ${BUILD_FLAGS_COMPILE_KERNEL})
 
+target_include_directories(kernel PRIVATE 
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 target_link_libraries(kernel PRIVATE 
   ${CMAKE_CURRENT_BINARY_DIR}/multiboot_header.o 
   ${CMAKE_CURRENT_BINARY_DIR}/boot.o)

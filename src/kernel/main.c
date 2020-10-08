@@ -1,7 +1,5 @@
-#include <stdint.h>
-#include <sys/types.h>
-#include <stddef.h>
-#include <string.h>
+#include "base.h"
+#include <string.h> // TODO: Remove this later
 
 /// The address of the frame buffer.
 #define VIDEO_ADDRESS 0xB8000
