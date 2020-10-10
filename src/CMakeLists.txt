@@ -17,6 +17,7 @@ SET_SOURCE_FILES_PROPERTIES(
 )
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/kernel BUILD_SRC_ALL)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/drivers BUILD_SRC_ALL)
 message("${CMAKE_CURRENT_SOURCE_DIR}: All sources: ${BUILD_SRC_ALL}")
 
 add_executable(kernel ${BUILD_SRC_ALL} )

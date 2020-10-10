@@ -63,6 +63,7 @@ typedef double f64_t;
 #define base_must_check __attribute__((warn_unused_result))
 #define base_no_return __attribute__((noreturn)) void
 #define base_no_null __attribute__((nonnull))
+#define base_private static 
 
 base_no_return _dbg_assert_failed(
     const ch_t *expr, const ch_t *file, u32_t line_no);
