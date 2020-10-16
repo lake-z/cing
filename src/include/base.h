@@ -12,6 +12,7 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
+typedef bool bo_t;
 typedef unsigned char uch_t;
 typedef char ch_t;
 typedef signed char i8_t;
@@ -22,10 +23,7 @@ typedef unsigned char u8_t;
 typedef unsigned short u16_t;
 typedef uint32_t u32_t;
 typedef uint64_t u64_t;
-typedef u8_t b8_t;
-typedef u16_t b16_t;
-typedef u32_t b32_t;
-typedef u64_t b64_t;
+typedef u8_t byte_t;
 typedef size_t usz_t;
 typedef ssize_t ssz_t;
 typedef float f32_t;

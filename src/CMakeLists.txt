@@ -18,13 +18,14 @@ SET_SOURCE_FILES_PROPERTIES(
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/kernel BUILD_SRC_ALL)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/drivers BUILD_SRC_ALL)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/containers BUILD_SRC_ALL)
 message("${CMAKE_CURRENT_SOURCE_DIR}: All sources: ${BUILD_SRC_ALL}")
 
 add_executable(kernel ${BUILD_SRC_ALL} )
 add_dependencies(kernel asm_multiboot_header asm_boot)
 
 set(BUILD_FLAGS_COMPILE_KERNEL -ffreestanding -nostdlib -fno-builtin
-  -mno-red-zone -std=c11)
+  -mno-red-zone -std=gnu11)
 
 target_compile_options(kernel PRIVATE ${BUILD_FLAGS_COMPILE_KERNEL})
 

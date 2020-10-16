@@ -5,7 +5,7 @@
 
 #define kernel_assert(expr) \
   do { \
-    if(base_unlikely(!expr)) {\
+    if(base_unlikely(!(expr))) {\
       _kernel_assert_fail(#expr, __FILE__, __LINE__); \
     } \
   } while(0) \

@@ -1,4 +1,5 @@
 #include "base.h"
+#include "containers_string.h"
 #include "drivers_screen.h"
 #include "kernel_panic.h"
 #include <string.h> // TODO: Remove this later
@@ -8,19 +9,73 @@
 #define FB_HIGH_BYTE_COMMAND 14
 #define FB_LOW_BYTE_COMMAND  15
 
+base_private void process_boot_info(uch_t *addr)
+{
+  const static usz_t _MSG_LEN = 128;
+  ch_t msg[_MSG_LEN];
+  usz_t msg_ptr;
+  ch_t *str;
+  usz_t row_no;
+
+  row_no = 0;
+
+  msg_ptr = 0;
+  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
+  str = "BOOT INFO: ";
+  msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
+  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, (u64_t)addr[0]);
+  msg[msg_ptr] = '\0';
+  screen_write_str(msg, SCREEN_COLOR_LIGHT_GREY, SCREEN_COLOR_BLACK, 
+    row_no++, 0);
+
+  msg_ptr = 0;
+  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
+  str = "flags: ";
+  msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
+  if(byte_is_bit_set(addr[0], 0)) {
+    str = "mem* enabled.";
+  } else {
+    str = "mem* disabled.";
+  }
+  msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
+  msg[msg_ptr] = '\0';
+  screen_write_str(msg, SCREEN_COLOR_BLUE, SCREEN_COLOR_BLACK, row_no++, 0);
+
+  msg_ptr = 0;
+  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
+  str = "flags: ";
+  msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
+  if(byte_is_bit_set(addr[0], 1)) {
+    str = "boot_device enabled.";
+  } else {
+    str = "boot_device disabled.";
+  }
+  msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
+  msg[msg_ptr] = '\0';
+  screen_write_str(msg, SCREEN_COLOR_BLUE, SCREEN_COLOR_BLACK, row_no++, 0);
+
+  msg_ptr = 0;
+  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
+  str = "flags: ";
+  msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
+  if(byte_is_bit_set(addr[0], 2)) {
+    str = "cmdline enabled.";
+  } else {
+    str = "cmdline disabled.";
+  }
+  msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
+  msg[msg_ptr] = '\0';
+  screen_write_str(msg, SCREEN_COLOR_BLUE, SCREEN_COLOR_BLACK, row_no++, 0);
+  
+}
+
 void kmain(uint64_t addr)
 {
   screen_init();
   screen_clear();
 
-  kernel_assert(false);
-
   // multiboot_info_t* mbi = (multiboot_info_t*)addr;
-
-  screen_write_at('O', SCREEN_COLOR_RED, SCREEN_COLOR_BLACK, 0, 0);
-  screen_write_at('K', SCREEN_COLOR_RED, SCREEN_COLOR_BLACK, 0, 1);
-  screen_write_at('A', SCREEN_COLOR_RED, SCREEN_COLOR_BLACK, 0, 2);
-  screen_write_at('Y', SCREEN_COLOR_RED, SCREEN_COLOR_BLACK, 0, 3);
+  process_boot_info((uch_t *)addr);
 
   while (1) {
     // This allows the CPU to enter a sleep state in which it consumes much
