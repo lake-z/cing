@@ -53,7 +53,7 @@ usz_t str_buf_marshal_uint(
   buf_off_pro = buf_off + digit_cnt - 1;
   while (true) {
     usz_t digit = val_pro % 10;
-    buf[buf_off_pro] = digit + '0';
+    buf[buf_off_pro] = (ch_t)(digit + '0');
 
     val_pro /= 10;
     if (val_pro == 0) {

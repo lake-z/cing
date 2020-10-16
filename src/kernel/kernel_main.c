@@ -1,6 +1,6 @@
-#include "base.h"
 #include "containers_string.h"
 #include "drivers_screen.h"
+#include "kernal_main.h"
 #include "kernel_panic.h"
 #include <string.h> // TODO: Remove this later
 
@@ -11,7 +11,7 @@
 
 base_private void process_boot_info(uch_t *addr)
 {
-  const static usz_t _MSG_LEN = 128;
+  base_private const usz_t _MSG_LEN = 128;
   ch_t msg[_MSG_LEN];
   usz_t msg_ptr;
   ch_t *str;
@@ -21,7 +21,7 @@ base_private void process_boot_info(uch_t *addr)
 
   msg_ptr = 0;
   msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
-  str = "BOOT INFO: ";
+  str = (ch_t *)"BOOT INFO: ";
   msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
   msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, (u64_t)addr[0]);
   msg[msg_ptr] = '\0';
@@ -30,12 +30,12 @@ base_private void process_boot_info(uch_t *addr)
 
   msg_ptr = 0;
   msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
-  str = "flags: ";
+  str = (ch_t *)"flags: ";
   msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
   if(byte_is_bit_set(addr[0], 0)) {
-    str = "mem* enabled.";
+    str = (ch_t *)"mem* enabled.";
   } else {
-    str = "mem* disabled.";
+    str = (ch_t *)"mem* disabled.";
   }
   msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
   msg[msg_ptr] = '\0';
@@ -43,12 +43,12 @@ base_private void process_boot_info(uch_t *addr)
 
   msg_ptr = 0;
   msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
-  str = "flags: ";
+  str = (ch_t *)"flags: ";
   msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
   if(byte_is_bit_set(addr[0], 1)) {
-    str = "boot_device enabled.";
+    str = (ch_t *)"boot_device enabled.";
   } else {
-    str = "boot_device disabled.";
+    str = (ch_t *)"boot_device disabled.";
   }
   msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
   msg[msg_ptr] = '\0';
@@ -56,12 +56,12 @@ base_private void process_boot_info(uch_t *addr)
 
   msg_ptr = 0;
   msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, row_no);
-  str = "flags: ";
+  str = (ch_t *)"flags: ";
   msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
   if(byte_is_bit_set(addr[0], 2)) {
-    str = "cmdline enabled.";
+    str = (ch_t *)"cmdline enabled.";
   } else {
-    str = "cmdline disabled.";
+    str = (ch_t *)"cmdline disabled.";
   }
   msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, str, str_len(str));
   msg[msg_ptr] = '\0';
@@ -69,7 +69,7 @@ base_private void process_boot_info(uch_t *addr)
   
 }
 
-void kmain(uint64_t addr)
+void kernal_main(u64_t addr)
 {
   screen_init();
   screen_clear();

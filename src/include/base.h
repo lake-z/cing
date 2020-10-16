@@ -55,6 +55,9 @@ typedef double f64_t;
 #define PRINT_U64 "%llu"
 #define PRINT_STR "%s"
 
+#define _base_cast_const_type(TOTYPE,FROMTYPE,X) ((__extension__(union {FROMTYPE _q; TOTYPE _nq;})(X))._nq)
+#define base_cast_const(TYPE,X) _base_cast_const_type(TYPE, const TYPE, (X))
+
 #define base_likely(x) __builtin_expect((x) != 0, 1)
 #define base_unlikely(x) __builtin_expect((x) != 0, 0)
 

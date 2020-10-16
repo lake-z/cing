@@ -213,7 +213,7 @@ gdt64:
 ; -----------------------------------------------------------------------------
 ; 64-bit code below
 
-extern kmain
+extern kernal_main
 
 section .text
 bits 64
@@ -226,7 +226,7 @@ long_mode_start:
 	mov fs, ax
 	mov gs, ax
 
-	call kmain
+	call kernal_main
 
 	; Should not happen.
 	hlt

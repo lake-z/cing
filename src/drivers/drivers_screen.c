@@ -2,7 +2,6 @@
 base_private ch_t *_video_buffer;
 base_private usz_t _col_ptr;
 base_private usz_t _row_ptr;
-base_private u8_t _color;
 
 base_private ch_t _color_code(
   screen_color_t fg,
@@ -11,7 +10,7 @@ base_private ch_t _color_code(
 {
   u8_t fg_c = (u8_t)(fg);
   u8_t bg_c = (u8_t)(bg);
-  u8_t cc = fg | bg << 4;
+  u8_t cc = fg_c | (u8_t)(bg_c << 4);
   return (ch_t)(cc);
 }
 
@@ -55,12 +54,10 @@ void screen_write_str(
   usz_t row,
   usz_t col)
 {
-  ch_t cc = _color_code(fg, bg);
   for (usz_t i = 0; (i + col) < SCREEN_WIDTH; i++) {
     if (str[i] == '\0') {
       break;
     }
     screen_write_at(str[i], fg, bg, row, i + col);
   }
-
 }

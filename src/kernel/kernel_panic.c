@@ -2,6 +2,7 @@
 #include "drivers_screen.h"
 #include "kernel_panic.h"
 
+/*
 base_no_return _kernel_panic(
   const char *msg
 )
@@ -15,6 +16,7 @@ base_no_return _kernel_panic(
     __asm__("hlt");
   }
 }
+*/
 
 base_private void _unsigned_to_str(usz_t uval, char *buf, usz_t buf_cap)
 {

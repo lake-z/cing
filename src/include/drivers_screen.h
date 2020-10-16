@@ -25,8 +25,8 @@ typedef enum {
   SCREEN_COLOR_WHITE = 15
 } screen_color_t;
 
-void screen_init();
-void screen_clear();
+void screen_init(void);
+void screen_clear(void);
 void screen_write_at(
   ch_t c, 
   screen_color_t fg, 
