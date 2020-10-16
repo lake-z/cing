@@ -2,22 +2,6 @@
 #include "drivers_screen.h"
 #include "kernel_panic.h"
 
-/*
-base_no_return _kernel_panic(
-  const char *msg
-)
-{
-  screen_write_str("Kernel panic!", SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, 
-    SCREEN_HEIGHT - 2, 0);
-  screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, 
-    SCREEN_HEIGHT - 1, 0);
-
-  while (1) {
-    __asm__("hlt");
-  }
-}
-*/
-
 base_private void _unsigned_to_str(usz_t uval, char *buf, usz_t buf_cap)
 {
   usz_t buf_off;
@@ -69,6 +53,27 @@ base_private void _unsigned_to_str(usz_t uval, char *buf, usz_t buf_cap)
   buf[digit_cnt] = '\0';
 }
 
+base_no_return _kernel_panic(
+  const char * file, usz_t line, const char *msg
+) {
+  char ln_str[128];
+  screen_write_str("Kernel panic!", SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, 
+    SCREEN_HEIGHT - 5, 0);
+  screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, 
+    SCREEN_HEIGHT - 4, 0);
+  screen_write_str("File:", SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, 
+    SCREEN_HEIGHT - 3, 0);
+  screen_write_str(file, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, 
+    SCREEN_HEIGHT - 2, 0);
+  _unsigned_to_str(line, ln_str, 128);
+  screen_write_str(ln_str, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, 
+    SCREEN_HEIGHT - 1, 0);
+
+  while (1) {
+    __asm__("hlt");
+  }
+}
+
 base_no_return _kernel_assert_fail(const char *expr, const char *file, usz_t line)
 {
   usz_t row = 0;
@@ -88,4 +93,15 @@ base_no_return _kernel_assert_fail(const char *expr, const char *file, usz_t lin
   while (1) {
     __asm__("hlt");
   }
+}
+
+uintptr_t __stack_chk_guard = 0x595e9fbd94fda766;
+
+/**
+ * Basic stack smashing protector implementation
+ * Based on https://wiki.osdev.org/Stack_Smashing_Protector
+ */
+void __stack_chk_fail(void)
+{
+  kernel_panic("Stack smashing detected");
 }

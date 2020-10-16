@@ -24,9 +24,8 @@ message("${CMAKE_CURRENT_SOURCE_DIR}: All sources: ${BUILD_SRC_ALL}")
 add_executable(kernel ${BUILD_SRC_ALL} )
 add_dependencies(kernel asm_multiboot_header asm_boot)
 
-# FIXME add -fstack-protector-all here
 set(BUILD_FLAGS_COMPILE_KERNEL -ffreestanding -nostdlib -fno-builtin
-  -mno-red-zone -std=gnu11
+  -mno-red-zone -std=gnu11 -fstack-protector-all
 )
 set(BUILD_FLAGS_COMPILE_WARNINGS
   -pedantic 
