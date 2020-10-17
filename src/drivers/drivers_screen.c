@@ -1,4 +1,7 @@
+#include "kernel_panic.h"
 #include "drivers_screen.h"
+#include "containers_string.h"
+
 base_private ch_t *_video_buffer;
 base_private usz_t _col_ptr;
 base_private usz_t _row_ptr;
@@ -32,6 +35,11 @@ void screen_clear()
   _row_ptr = 0;
 }
 
+base_private void _video_buffer_offset_verify(usz_t offset)
+{
+  kernel_assert(offset < (2 * SCREEN_WIDTH * SCREEN_HEIGHT));
+}
+
 void screen_write_at(
   ch_t c, 
   screen_color_t fg, 
@@ -43,6 +51,7 @@ void screen_write_at(
   usz_t offset = 2 * (row * SCREEN_WIDTH + col);
   ch_t cc = _color_code(fg, bg);
 
+  _video_buffer_offset_verify(offset + 1);
   _video_buffer[offset] = c;
   _video_buffer[offset + 1] = cc;
 }
@@ -60,4 +69,21 @@ void screen_write_str(
     }
     screen_write_at(str[i], fg, bg, row, i + col);
   }
+}
+
+void screen_write_uint(
+  u64_t val, 
+  screen_color_t fg, 
+  screen_color_t bg, 
+  usz_t row,
+  usz_t col) 
+{
+  base_private const usz_t _MSG_LEN = 128;
+  ch_t msg[_MSG_LEN];
+  usz_t msg_ptr;
+
+  msg_ptr = str_buf_marshal_uint(msg, 0, _MSG_LEN, val);
+  msg[msg_ptr] = '\0';
+
+  screen_write_str(msg, fg, bg, row, col); 
 }

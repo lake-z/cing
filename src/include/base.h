@@ -28,6 +28,8 @@ typedef size_t usz_t;
 typedef ssize_t ssz_t;
 typedef float f32_t;
 typedef double f64_t;
+typedef void * vptr_t;
+typedef uintptr_t uptr_t;
 
 #define i64_literl(x) (x##L)
 #define u64_literal(x) (x##UL)
@@ -55,8 +57,7 @@ typedef double f64_t;
 #define PRINT_U64 "%llu"
 #define PRINT_STR "%s"
 
-#define _base_cast_const_type(TOTYPE,FROMTYPE,X) ((__extension__(union {FROMTYPE _q; TOTYPE _nq;})(X))._nq)
-#define base_cast_const(TYPE,X) _base_cast_const_type(TYPE, const TYPE, (X))
+#define base_may_unuse __attribute__((unused))
 
 #define base_likely(x) __builtin_expect((x) != 0, 1)
 #define base_unlikely(x) __builtin_expect((x) != 0, 0)

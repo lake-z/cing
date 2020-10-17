@@ -41,4 +41,12 @@ void screen_write_str(
   screen_color_t bg,
   usz_t row,
   usz_t col);
+
+void screen_write_uint(
+  u64_t val, 
+  screen_color_t fg, 
+  screen_color_t bg, 
+  usz_t row,
+  usz_t col);
+
 #endif

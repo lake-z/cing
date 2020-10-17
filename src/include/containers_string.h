@@ -29,4 +29,9 @@ usz_t str_buf_marshal_str(
   usz_t str_len /* String length */
 );
 
+usz_t str_buf_marshal_terminator(
+  ch_t *buf,
+  const usz_t buf_off,
+  const usz_t buf_len
+);
 #endif

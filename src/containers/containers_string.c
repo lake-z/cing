@@ -61,13 +61,20 @@ usz_t str_buf_marshal_uint(
     }
     buf_off_pro--;
   }
-  screen_write_str("val", SCREEN_COLOR_RED, SCREEN_COLOR_BLACK, 
-    val, SCREEN_WIDTH - 20);
-   screen_write_str("digit_cnt", SCREEN_COLOR_RED, SCREEN_COLOR_BLACK, 
-    digit_cnt, SCREEN_WIDTH - 20);
  
   kernel_assert(buf_off_pro == buf_off);
   return digit_cnt;
+}
+
+usz_t str_buf_marshal_terminator(
+  ch_t *buf,
+  const usz_t buf_off,
+  const usz_t buf_len
+)
+{
+  kernel_assert((buf_len - buf_off) > 1);
+  buf[buf_off] =  '\0';
+  return 1;
 }
 
 bo_t byte_is_bit_set(byte_t byte, usz_t bit)
