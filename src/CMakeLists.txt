@@ -6,7 +6,6 @@ SET_SOURCE_FILES_PROPERTIES(
   EXTERNAL_OBJECT true
   GENERATED true
 )
-
 add_custom_target(asm_boot COMMAND ${BUILD_TOOL_NASM} -f elf64
   ${CMAKE_SOURCE_DIR}/src/boot/boot.asm -o boot.o)
 SET_SOURCE_FILES_PROPERTIES(
@@ -15,15 +14,25 @@ SET_SOURCE_FILES_PROPERTIES(
   EXTERNAL_OBJECT true
   GENERATED true
 )
+add_custom_target(asm_interrupt_definations COMMAND ${BUILD_TOOL_NASM} -f elf64
+  ${CMAKE_SOURCE_DIR}/src/interrupts/interrupts_definations.asm -o 
+  interrupts_definations.o)
+SET_SOURCE_FILES_PROPERTIES(
+  ${CMAKE_CURRENT_BINARY_DIR}/interrupts_definations.o
+  PROPERTIES
+  EXTERNAL_OBJECT true
+  GENERATED true
+)
 
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/kernel BUILD_SRC_ALL)
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/drivers BUILD_SRC_ALL)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/containers BUILD_SRC_ALL)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/drivers BUILD_SRC_ALL)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/interrupts BUILD_SRC_ALL)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/kernel BUILD_SRC_ALL)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/mm BUILD_SRC_ALL)
 message("${CMAKE_CURRENT_SOURCE_DIR}: All sources: ${BUILD_SRC_ALL}")
 
 add_executable(kernel ${BUILD_SRC_ALL} )
-add_dependencies(kernel asm_multiboot_header asm_boot)
+add_dependencies(kernel asm_multiboot_header asm_boot asm_interrupt_definations)
 
 set(BUILD_FLAGS_COMPILE_KERNEL -ffreestanding -nostdlib -fno-builtin
   -mno-red-zone -std=gnu11 -fstack-protector-all
@@ -60,7 +69,9 @@ target_include_directories(kernel PRIVATE
 
 target_link_libraries(kernel PRIVATE 
   ${CMAKE_CURRENT_BINARY_DIR}/multiboot_header.o 
-  ${CMAKE_CURRENT_BINARY_DIR}/boot.o)
+  ${CMAKE_CURRENT_BINARY_DIR}/boot.o
+  ${CMAKE_CURRENT_BINARY_DIR}/interrupts_definations.o
+)
 
 target_link_options(kernel PRIVATE --nmagic
   --script=${CMAKE_SOURCE_DIR}/scripts/linker.ld)

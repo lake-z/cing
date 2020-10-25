@@ -2,7 +2,9 @@
 #include "drivers_screen.h"
 #include "mm_low.h"
 #include "kernal_main.h"
+#include "interrupts.h"
 #include "kernel_panic.h"
+#include "kernel_port.h"
 #include "kernel_env.h"
 
 /* Forwarded declarations */
@@ -63,8 +65,6 @@ base_private void process_boot_info_mem_map(
   kernel_assert((size - 8 - 8) % entry_size == 0);
   entry_cnt = (size - 8 - 8) / entry_size;
 
-  (void)(entry_cnt);
-  /* 
   for (u64_t en  = 0; en < entry_cnt; en++) {
     u64_t base;
     u64_t len;
@@ -106,7 +106,6 @@ base_private void process_boot_info_mem_map(
 
     kernel_assert(reserve == 0);
   }
-  */
 }
 
 base_private const byte_t *process_boot_info_tag_header(
@@ -116,17 +115,19 @@ base_private const byte_t *process_boot_info_tag_header(
   usz_t *row_no
 )
 {
-  base_private const usz_t _MSG_LEN = 128;
-  ch_t msg[_MSG_LEN];
-  usz_t msg_ptr;
-  ch_t *msg_part;
-
   kernel_assert((((uptr_t)ptr) % 8) == 0);
  
   *type = *(u32_t *)ptr;
   ptr += 4;
   *size = *(u32_t *)ptr;
   ptr += 4;
+
+  (void)(row_no);
+  /*
+  base_private const usz_t _MSG_LEN = 128;
+  ch_t msg[_MSG_LEN];
+  usz_t msg_ptr;
+  ch_t *msg_part;
 
   msg_ptr = 0;
   msg_part = (ch_t *)"type: ";
@@ -142,6 +143,7 @@ base_private const byte_t *process_boot_info_tag_header(
   msg[msg_ptr] = '\0';
   screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
   *row_no += 1;
+  */
 
   return ptr;
 }
@@ -251,9 +253,22 @@ void kernal_main(u64_t addr)
   screen_init();
   screen_clear();
 
+  intr_init();
+
   process_boot_info((uch_t *)addr);
 
+  /*
+  ch_t *x = (ch_t *)(u64_literal(1024)* u64_literal(1024)* u64_literal(1024 ) * 
+    u64_literal(2));
+  *x = 'a';
+  *(x+1) = '\0';
+  screen_write_str(x, SCREEN_COLOR_CYAN, SCREEN_COLOR_BLACK, 10, 0);
+  */
+
   env_init_cpu_info();  
+
+  int x = 123;
+  x = x / (x - 123) ;
 
   while (1) {
     /* This allows the CPU to enter a sleep state in which it consumes much

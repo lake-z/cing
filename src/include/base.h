@@ -33,6 +33,7 @@ typedef uintptr_t uptr_t;
 
 #define i64_literl(x) (x##L)
 #define u64_literal(x) (x##UL)
+#define unsig_literal(x) (x##U)
 
 #define I8_MIN -128
 #define I8_MAX 127

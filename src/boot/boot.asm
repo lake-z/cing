@@ -19,6 +19,7 @@ start:
 	call check_cpuid
 	call check_long_mode
 
+  ; When we switch to long mode, paging will be activated automatically.
 	call set_up_page_tables
 	call enable_paging
 
@@ -102,6 +103,8 @@ check_long_mode:
     jmp error
 
 ; -----------------------------------------------------------------------------
+; We setting up identity mapping here,
+; i.e. map a physical address to the same virtual address.
 
 set_up_page_tables:
     ; See: https://os.phil-opp.com/page-tables/#implementation
@@ -144,6 +147,8 @@ enable_paging:
     mov eax, p4_table
     mov cr3, eax
 
+    ; Long mode is an extension of Physical Address Extension (PAE),
+    ; so we need to enable PAE first
     ; enable PAE-flag in cr4 (Physical Address Extension)
     mov eax, cr4
     or eax, 1 << 5
@@ -195,17 +200,28 @@ stack_bottom:
 stack_top:
 
 ; -----------------------------------------------------------------------------
-; The processor is still in a 32-bit compatibility submode. To actually execute
-; 64-bit code, we need to set up a new Global Descriptor Table.
+; After enable paging, the processor is still in a 32-bit compatibility
+; submode. To actually execute 64-bit code, we need to set up a new Global
+; Descriptor Table.
+
+; The first entry of the GDT is a null segment selector(that is, a segment
+; selector with an index of 0 and the TI flag set to 0). The processor
+; generates an exception when a segment register holding a null selector is
+; used to access memory. The processor does not generate an exception when a
+; segment register (other than the CS or SS registers) is loaded with a null
+; selector. A null selector can be used to initialize unused segment registers. 
+; Loading the CS or SS register with a null segment selector causes a
+; general-protection exception (#GP) to be generated.
 
 section .rodata
 gdt64:
-    ; `dq` means 'define quad-word'
+    ; `dq` means 'define quad-word', which is 8 bytes len
     dq 0
 .code: equ $ - gdt64
     dq (1<<44) | (1<<47) | (1<<41) | (1<<43) | (1<<53)
 .data: equ $ - gdt64
     dq (1<<44) | (1<<47) | (1<<41)
+; To load our new 64-bit GDT, we have to tell the CPU its address and length.
 .pointer:
     dw .pointer - gdt64 - 1
     dq gdt64

@@ -61,7 +61,7 @@ usz_t str_buf_marshal_uint(
     }
     buf_off_pro--;
   }
- 
+
   kernel_assert(buf_off_pro == buf_off);
   return digit_cnt;
 }
@@ -77,8 +77,20 @@ usz_t str_buf_marshal_terminator(
   return 1;
 }
 
-bo_t byte_is_bit_set(byte_t byte, usz_t bit)
+bo_t byte_bit_get(byte_t byte, usz_t bit)
 {
   kernel_assert(bit < 8);
   return byte & (1 << (bit - 1));
+}
+
+byte_t byte_bit_set(byte_t byte, usz_t bit)
+{
+  kernel_assert(bit < 8);
+  return (byte |= ((byte_t)(1 << bit)));
+}
+
+byte_t byte_bit_clear(byte_t byte, usz_t bit)
+{
+  kernel_assert(bit < 8);
+  return (byte &= ((byte_t)~(((byte_t)(1 << bit)))));
 }

@@ -2,8 +2,8 @@
 ; cf. https://github.com/tmathmeyer/sos
 global interrupts
 
-extern isr_handler
-extern irq_handler
+extern intr_isr_handler
+extern intr_irq_handler
 
 %macro def_isr_handler 1
     global isr%1
@@ -41,7 +41,7 @@ isr_common_stub:
     mov rsi, rsp
 
     ; call handler
-    call isr_handler
+    call intr_isr_handler
 
     ; restore registers
     pop r15
@@ -120,7 +120,7 @@ irq_common_stub:
     mov rsi, rsp
 
     ; call handler
-    call irq_handler
+    call intr_irq_handler
 
     ; restore registers
     pop r15
