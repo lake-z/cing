@@ -7,11 +7,11 @@ typedef enum { IDT_GATE_TYPE_INTERRUPT, IDT_GATE_TYPE_TRAP } idt_gate_type_t;
 
 /* Actually a pointer to the stack, CPU will first push related registers as
  * on stack as arguments to ISR, see:
- * https://os.phil-opp.com/cpu-exceptions/#the-interrupt-stack-frame 
+ * https://os.phil-opp.com/cpu-exceptions/#the-interrupt-stack-frame
  *
  * And then, all registers are pushed onto stack and to be restored later by
- * isr_common_stub or irq_common_stub. 
- * 
+ * isr_common_stub or irq_common_stub.
+ *
  * And finally note that stack grows downward. */
 typedef byte_t intr_args_t;
 
@@ -97,7 +97,7 @@ extern void irq4(void);
  * generates an exception when a segment register holding a null selector is
  * used to access memory. The processor does not generate an exception when a
  * segment register (other than the CS or SS registers) is loaded with a null
- * selector. A null selector can be used to initialize unused segment registers. 
+ * selector. A null selector can be used to initialize unused segment registers
  * Loading the CS or SS register with a null segment selector causes a
  * general-protection exception (#GP) to be generated.
  */
@@ -106,7 +106,7 @@ base_private const u16_t GDT_CODE_SEGMENT_OFFSET = 0x08;
 /* Interrupt Descriptor Table, has 256 gates, and 18 bytes len each */
 base_private byte_t _idt[IDT_GATE_LEN * IDT_GATE_COUNT];
 
-/* 
+/*
  ******************************************************************************
                     ____________                          ____________
 Real Time Clock -> |            |   Timer -------------> |            |
@@ -120,8 +120,8 @@ Secondary ATA ---> |____________|   Parallel Port 1----> |____________|
 
  * ****************************************************************************
  */
-/* The default configuration of the PICs is not usable, because it sends 
-  * interrupt vector numbers in the range 0–15 to the CPU. These numbers are 
+/* The default configuration of the PICs is not usable, because it sends
+  * interrupt vector numbers in the range 0–15 to the CPU. These numbers are
   * already occupied by CPU exceptions.
   * Mapping IRQ 0..15 to interrupt handler index 32..32+15 */
 base_private const byte_t IRQ_HANDLER_BASE = 32;
@@ -137,22 +137,22 @@ _idt_gate_encode(usz_t gate_idx, idt_gate_type_t type, uptr_t handler)
   /* Field offset1 */
   *(u16_t *)gate = (u16_t)handler;
 
-  /* Field selector: 
+  /* Field selector:
    * a 16 bit value and must point to a valid descriptor in GDT. */
   *(u16_t *)(gate + 2) = GDT_CODE_SEGMENT_OFFSET;
 
   /* Two bytes options following:
-   * bits 0 ~ 2: 
-   *  Interrupt Stack Table (IST) Index, 
+   * bits 0 ~ 2:
+   *  Interrupt Stack Table (IST) Index,
    *    0, Don't switch stacks;
-   *    1-7, Switch to the n-th stack in the Interrupt Stack Table when this 
-   *      handler is called 
-   * bits 3 ~ 7: Reserved 
-   * bit 8: 0, Interrupt Gate, 1, Trap Gate; If this bit is 0, interrupts are 
+   *    1-7, Switch to the n-th stack in the Interrupt Stack Table when this
+   *      handler is called
+   * bits 3 ~ 7: Reserved
+   * bit 8: 0, Interrupt Gate, 1, Trap Gate; If this bit is 0, interrupts are
    *    disabled when this handler is called.
    * bits 9 ~ 11: Must be 1
    * bit 12: Must be 0
-   * bits 13 ~ 14: Descriptor Privilege Level (DPL), The minimal privilege 
+   * bits 13 ~ 14: Descriptor Privilege Level (DPL), The minimal privilege
    *    level required for calling this handler.
    * bit 15: Present, Raise a double fault if this bit is unset.
    */
@@ -184,7 +184,7 @@ base_private void _intr_init_pic_8259(void)
   port_write_byte(PORT_NO_PIC_SLAVE_CMD, 0x11);
 
   /* Set IRQ base numbers for each PIC
-   * ISR handler offset for master PIC become 
+   * ISR handler offset for master PIC become
    * IRQ_HANDLER_BASE..IRQ_HANDLER_BASE+7
    * same for slave PIC: IRQ_HANDLER_BASE+8..IRQ_HANDLER_BASE+15 */
   port_write_byte(PORT_NO_PIC_MASTER_DATA, IRQ_HANDLER_BASE);
@@ -267,6 +267,16 @@ void intr_init(void)
   _intr_init_idt();
   _intr_load_idt_register();
   _intr_init_pic_8259();
+}
+
+void intr_irq_enable(void)
+{
+  __asm__("sti");
+}
+
+void intr_irq_disable(void)
+{
+  __asm__("cli");
 }
 
 void intr_isr_handler(u64_t id, uptr_t stack_addr)

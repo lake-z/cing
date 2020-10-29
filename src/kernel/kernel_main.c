@@ -259,6 +259,7 @@ void kernal_main(u64_t addr)
 
   env_init_cpu_info();
 
+  intr_irq_enable();
   while (1) {
     /* This allows the CPU to enter a sleep state in which it consumes much
      * less energy. See: https://en.wikipedia.org/wiki/HLT_(x86_instruction) */
