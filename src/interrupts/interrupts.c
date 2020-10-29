@@ -266,9 +266,9 @@ base_private void _intr_load_idt_register(void)
 
 void intr_init(void)
 {
-  _intr_init_pic_8259();
   _intr_init_idt();
   _intr_load_idt_register();
+  _intr_init_pic_8259();
 }
 
 void intr_isr_handler(u64_t id, uptr_t stack_addr)
