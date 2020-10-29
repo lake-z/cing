@@ -4,7 +4,7 @@
 
 base_private inline bo_t _math_is_pow2(u64_t n)
 {
-  return base_likely(!((n) & ((n) - 1)));
+  return base_likely(!((n) & ((n)-1)));
 }
 
 vptr_t mm_ptr_align_up(vptr_t p, u64_t align)

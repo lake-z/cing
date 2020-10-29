@@ -1,21 +1,32 @@
-# CMake list file at root.                                                         
-cmake_minimum_required(VERSION 3.8)                                                
-                                                                                   
-# Project information                                                              
+# CMake list file at root.
+cmake_minimum_required(VERSION 3.8)
+
+# Project information
 project(cing LANGUAGES C CXX ASM)
 
-# Process all build options.                                                       
-if(NOT BUILD_TOOL_NASM)                                                           
+# Process all build options.
+if(NOT BUILD_TOOL_NASM)
   set(BUILD_TOOL_NASM nasm)
-endif()                                                                            
+endif()
 message("${CMAKE_CURRENT_SOURCE_DIR}: Assembler: ${BUILD_TOOL_NASM}")
 
 if(NOT BUILD_TOOL_GRUB_RESCURE)
   set(BUILD_TOOL_GRUB_RESCURE grub2-mkrescure)
-endif()                                                                            
-
+endif()
 message("${CMAKE_CURRENT_SOURCE_DIR}: \
 GRUB mkrescure: ${BUILD_TOOL_GRUB_RESCURE}")
+
+if(BUILD_TOOL_CLANG)
+  set(BUILD_TOOL_CLANG_TIDY ${BUILD_TOOL_CLANG}/bin/clang-tidy)
+  set(BUILD_TOOL_CLANG_FORMAT ${BUILD_TOOL_CLANG}/bin/clang-format)
+  message("${CMAKE_CURRENT_SOURCE_DIR}: Using clang-tidy: \
+${BUILD_TOOL_CLANG_TIDY}")
+  message("${CMAKE_CURRENT_SOURCE_DIR}: Using clang-format: \
+${BUILD_TOOL_CLANG_FORMAT}")
+else()
+  message("${CMAKE_CURRENT_SOURCE_DIR}: No clang tools avaliable")
+endif()
+
 
 set(CMAKE_LINKER ld)
 set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_LINKER>  <FLAGS> <CMAKE_C_LINK_FLAGS> \
@@ -34,12 +45,12 @@ add_subdirectory(src)
 add_custom_target(iso_create_dirs COMMAND mkdir -pv iso_files/boot/grub)
 add_dependencies(iso_create_dirs kernel)
 
-add_custom_target(iso_install_kernel COMMAND mv -v 
+add_custom_target(iso_install_kernel COMMAND mv -v
   ${CMAKE_BINARY_DIR}/src/kernel
   ${CMAKE_CURRENT_BINARY_DIR}/iso_files/boot/kernel.bin)
 add_dependencies(iso_install_kernel iso_create_dirs)
 
-add_custom_target(iso_install_grub_cfg COMMAND cp -v 
+add_custom_target(iso_install_grub_cfg COMMAND cp -v
   ${CMAKE_SOURCE_DIR}/scripts/grub.cfg
   ${CMAKE_CURRENT_BINARY_DIR}/iso_files/boot/grub)
 add_dependencies(iso_install_grub_cfg iso_create_dirs)

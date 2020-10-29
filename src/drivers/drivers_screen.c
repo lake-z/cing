@@ -1,15 +1,12 @@
-#include "kernel_panic.h"
 #include "drivers_screen.h"
 #include "containers_string.h"
+#include "kernel_panic.h"
 
 base_private ch_t *_video_buffer;
 base_private usz_t _col_ptr;
 base_private usz_t _row_ptr;
 
-base_private ch_t _color_code(
-  screen_color_t fg,
-  screen_color_t bg
-)
+base_private ch_t _color_code(screen_color_t fg, screen_color_t bg)
 {
   u8_t fg_c = (u8_t)(fg);
   u8_t bg_c = (u8_t)(bg);
@@ -26,10 +23,9 @@ void screen_init()
 
 void screen_clear()
 {
-  // memset((char*)VIDEO_ADDRESS, 0, 2 * SCREEN_HEIGHT * SCREEN_WIDTH);
   for (usz_t i = 0; i < 2 * SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
     _video_buffer[i] = '\0';
-  }  
+  }
 
   _col_ptr = 0;
   _row_ptr = 0;
@@ -41,12 +37,7 @@ base_private void _video_buffer_offset_verify(usz_t offset)
 }
 
 void screen_write_at(
-  ch_t c, 
-  screen_color_t fg, 
-  screen_color_t bg,
-  usz_t row, 
-  usz_t col
-)
+    ch_t c, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
 {
   usz_t offset = 2 * (row * SCREEN_WIDTH + col);
   ch_t cc = _color_code(fg, bg);
@@ -57,11 +48,7 @@ void screen_write_at(
 }
 
 void screen_write_str(
-  const char *str,
-  screen_color_t fg,
-  screen_color_t bg,
-  usz_t row,
-  usz_t col)
+    const char *str, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
 {
   for (usz_t i = 0; (i + col) < SCREEN_WIDTH; i++) {
     if (str[i] == '\0') {
@@ -72,11 +59,7 @@ void screen_write_str(
 }
 
 void screen_write_uint(
-  u64_t val, 
-  screen_color_t fg, 
-  screen_color_t bg, 
-  usz_t row,
-  usz_t col) 
+    u64_t val, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
 {
   base_private const usz_t _MSG_LEN = 128;
   ch_t msg[_MSG_LEN];
@@ -85,5 +68,5 @@ void screen_write_uint(
   msg_ptr = str_buf_marshal_uint(msg, 0, _MSG_LEN, val);
   msg[msg_ptr] = '\0';
 
-  screen_write_str(msg, fg, bg, row, col); 
+  screen_write_str(msg, fg, bg, row, col);
 }
