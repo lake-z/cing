@@ -93,8 +93,8 @@ Secondary ATA ---> |____________|   Parallel Port 1----> |____________|
   * Mapping IRQ 0..15 to interrupt handler index 32..32+15 */
 base_private const byte_t IRQ_HANDLER_BASE = 32;
 
-base_private const byte_t *
-_idt_gate_encode(usz_t gate_idx, idt_gate_type_t type, uptr_t handler)
+base_private const byte_t *_idt_gate_encode(
+    usz_t gate_idx, idt_gate_type_t type, uptr_t handler)
 {
   byte_t *gate;
 
@@ -206,14 +206,14 @@ base_private void _intr_init_idt(void)
   _idt_gate_encode(30, IDT_GATE_TYPE_INTERRUPT, (uptr_t)isr30);
   _idt_gate_encode(31, IDT_GATE_TYPE_INTERRUPT, (uptr_t)isr31);
   _idt_gate_encode(IRQ_HANDLER_BASE, IDT_GATE_TYPE_INTERRUPT, (uptr_t)irq0);
-  _idt_gate_encode((byte_t)(IRQ_HANDLER_BASE + 1), IDT_GATE_TYPE_INTERRUPT,
-                   (uptr_t)irq1);
-  _idt_gate_encode((byte_t)(IRQ_HANDLER_BASE + 2), IDT_GATE_TYPE_INTERRUPT,
-                   (uptr_t)irq2);
-  _idt_gate_encode((byte_t)(IRQ_HANDLER_BASE + 3), IDT_GATE_TYPE_INTERRUPT,
-                   (uptr_t)irq3);
-  _idt_gate_encode((byte_t)(IRQ_HANDLER_BASE + 4), IDT_GATE_TYPE_INTERRUPT,
-                   (uptr_t)irq4);
+  _idt_gate_encode(
+      (byte_t)(IRQ_HANDLER_BASE + 1), IDT_GATE_TYPE_INTERRUPT, (uptr_t)irq1);
+  _idt_gate_encode(
+      (byte_t)(IRQ_HANDLER_BASE + 2), IDT_GATE_TYPE_INTERRUPT, (uptr_t)irq2);
+  _idt_gate_encode(
+      (byte_t)(IRQ_HANDLER_BASE + 3), IDT_GATE_TYPE_INTERRUPT, (uptr_t)irq3);
+  _idt_gate_encode(
+      (byte_t)(IRQ_HANDLER_BASE + 4), IDT_GATE_TYPE_INTERRUPT, (uptr_t)irq4);
 }
 
 base_private void _intr_load_idt_register(void)
@@ -281,8 +281,8 @@ void intr_irq_handler(u64_t id, uptr_t stack_addr)
     msg_len =
         str_buf_marshal_str(msg, msg_len, MSG_CAP, msg_part, str_len(msg_part));
     screen_write_at('X', SCREEN_COLOR_CYAN, SCREEN_COLOR_BLACK, msg_len, 1);
-    msg_len = str_buf_marshal_uint(msg, msg_len, MSG_CAP,
-                                   (u64_t)(iid - INTR_ID_EX_FAULT_DE));
+    msg_len = str_buf_marshal_uint(
+        msg, msg_len, MSG_CAP, (u64_t)(iid - INTR_ID_EX_FAULT_DE));
     msg_len = str_buf_marshal_terminator(msg, msg_len, MSG_CAP);
     kernel_panic(msg);
   } else {

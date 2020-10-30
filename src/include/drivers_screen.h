@@ -3,7 +3,7 @@
 
 #include "base.h"
 
-#define SCREEN_WIDTH  80
+#define SCREEN_WIDTH 80
 #define SCREEN_HEIGHT 25
 
 typedef enum {
@@ -28,25 +28,12 @@ typedef enum {
 void screen_init(void);
 void screen_clear(void);
 void screen_write_at(
-  ch_t c, 
-  screen_color_t fg, 
-  screen_color_t bg, 
-  usz_t row, 
-  usz_t col
-);
+    ch_t c, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col);
 
 void screen_write_str(
-  const char *str,
-  screen_color_t fg,
-  screen_color_t bg,
-  usz_t row,
-  usz_t col);
+    const char *str, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col);
 
 void screen_write_uint(
-  u64_t val, 
-  screen_color_t fg, 
-  screen_color_t bg, 
-  usz_t row,
-  usz_t col);
+    u64_t val, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col);
 
 #endif

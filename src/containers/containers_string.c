@@ -16,10 +16,10 @@ usz_t str_len(const ch_t *str)
 }
 
 usz_t str_buf_marshal_str(ch_t *buf,
-                          const usz_t buf_off,
-                          const usz_t buf_len,
-                          const ch_t *str,
-                          usz_t str_len)
+    const usz_t buf_off,
+    const usz_t buf_len,
+    const ch_t *str,
+    usz_t str_len)
 {
   kernel_assert((buf_len - buf_off) > str_len);
   for (usz_t i = 0; i < str_len; i++) {
@@ -28,10 +28,8 @@ usz_t str_buf_marshal_str(ch_t *buf,
   return str_len;
 }
 
-usz_t str_buf_marshal_uint(ch_t *buf,
-                           const usz_t buf_off,
-                           const usz_t buf_len,
-                           const u64_t val)
+usz_t str_buf_marshal_uint(
+    ch_t *buf, const usz_t buf_off, const usz_t buf_len, const u64_t val)
 {
   u64_t val_pro;
   usz_t buf_off_pro;
@@ -64,9 +62,8 @@ usz_t str_buf_marshal_uint(ch_t *buf,
   return digit_cnt;
 }
 
-usz_t str_buf_marshal_terminator(ch_t *buf,
-                                 const usz_t buf_off,
-                                 const usz_t buf_len)
+usz_t str_buf_marshal_terminator(
+    ch_t *buf, const usz_t buf_off, const usz_t buf_len)
 {
   kernel_assert((buf_len - buf_off) > 1);
   buf[buf_off] = '\0';

@@ -106,7 +106,7 @@ if(BUILD_TOOL_CLANG_FORMAT)
     add_custom_command(TARGET kernel PRE_BUILD
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       # Use ! to negate the result
-      COMMAND ! ${TOOL_CLANG_FORMAT} -style=file -output-replacements-xml 
+      COMMAND ! ${BUILD_TOOL_CLANG_FORMAT} -style=file -output-replacements-xml 
         -verbose ${HEADER_FILE} | grep "replacement offset"
       COMMENT "Checking ${HEADER_FILE} code style ..."
     )

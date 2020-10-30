@@ -6,4 +6,3 @@
 void env_init_cpu_info(void);
 
 #endif
-

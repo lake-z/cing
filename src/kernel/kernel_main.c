@@ -1,31 +1,28 @@
 #include "containers_string.h"
 #include "drivers_screen.h"
 #include "interrupts.h"
-#include "kernal_main.h"
+#include "kernel_main.h"
 #include "kernel_env.h"
 #include "kernel_panic.h"
 #include "kernel_port.h"
 #include "mm_low.h"
 
 /* Forwarded declarations */
-base_private void process_boot_info_str(const byte_t *addr,
-                                        usz_t size base_may_unuse,
-                                        usz_t *row_no) base_no_null;
+base_private void process_boot_info_str(
+    const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no) base_no_null;
 
-base_private void process_boot_info_str(const byte_t *addr,
-                                        usz_t size base_may_unuse,
-                                        usz_t *row_no)
+base_private void process_boot_info_str(
+    const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no)
 {
   usz_t len = str_len((const ch_t *)addr);
 
   kernel_assert((len + 1 + 8) == size);
-  screen_write_str((const ch_t *)addr, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK,
-                   *row_no, 0);
+  screen_write_str(
+      (const ch_t *)addr, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
   (*row_no) += 1;
 }
-base_private void process_boot_info_mem_map(const byte_t *ptr,
-                                            usz_t size base_may_unuse,
-                                            usz_t *row_no)
+base_private void process_boot_info_mem_map(
+    const byte_t *ptr, usz_t size base_may_unuse, usz_t *row_no)
 {
   base_private const usz_t _MSG_LEN = 128;
   ch_t msg[_MSG_LEN];
@@ -79,23 +76,23 @@ base_private void process_boot_info_mem_map(const byte_t *ptr,
 
     msg_ptr = 0;
     msg_part = (ch_t *)"base: ";
-    msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part,
-                                   str_len(msg_part));
+    msg_ptr += str_buf_marshal_str(
+        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
     msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, base);
 
     msg_part = (ch_t *)", len: ";
-    msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part,
-                                   str_len(msg_part));
+    msg_ptr += str_buf_marshal_str(
+        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
     msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, len);
 
     msg_part = (ch_t *)", type: ";
-    msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part,
-                                   str_len(msg_part));
+    msg_ptr += str_buf_marshal_str(
+        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
     msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, type);
 
     msg_part = (ch_t *)", reserved: ";
-    msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part,
-                                   str_len(msg_part));
+    msg_ptr += str_buf_marshal_str(
+        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
     msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, reserve);
 
     msg_ptr += str_buf_marshal_terminator(msg, msg_ptr, _MSG_LEN);
@@ -107,10 +104,8 @@ base_private void process_boot_info_mem_map(const byte_t *ptr,
   }
 }
 
-base_private const byte_t *process_boot_info_tag_header(const byte_t *ptr,
-                                                        u32_t *type,
-                                                        u32_t *size,
-                                                        usz_t *row_no)
+base_private const byte_t *process_boot_info_tag_header(
+    const byte_t *ptr, u32_t *type, u32_t *size, usz_t *row_no)
 {
   kernel_assert((((uptr_t)ptr) % 8) == 0);
 
@@ -144,8 +139,8 @@ base_private const byte_t *process_boot_info_tag_header(const byte_t *ptr,
   return ptr;
 }
 
-base_private const byte_t *
-process_boot_info_tag(const byte_t *ptr, u32_t type, u32_t size, usz_t *row_no)
+base_private const byte_t *process_boot_info_tag(
+    const byte_t *ptr, u32_t type, u32_t size, usz_t *row_no)
 {
   base_private const usz_t _MSG_LEN = 128;
   ch_t msg[_MSG_LEN];
@@ -175,8 +170,8 @@ process_boot_info_tag(const byte_t *ptr, u32_t type, u32_t size, usz_t *row_no)
   default:
     msg_part = (ch_t *)"Invalid multiboot info tag type: ";
     msg_ptr = 0;
-    msg_ptr += str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part,
-                                   str_len(msg_part));
+    msg_ptr += str_buf_marshal_str(
+        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
     msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, type);
     msg[msg_ptr] = '\0';
     kernel_panic(msg);
@@ -203,7 +198,7 @@ base_private void process_boot_info(const byte_t *addr)
 
   row_no = 0;
   screen_write_str("MULTIBOOT INFORMATION", SCREEN_COLOR_LIGHT_GREY,
-                   SCREEN_COLOR_BLACK, row_no++, 0);
+      SCREEN_COLOR_BLACK, row_no++, 0);
 
   total_size = *(u32_t *)ptr;
   ptr += 4;
@@ -244,6 +239,21 @@ void kernal_main(u64_t addr)
 {
   screen_init();
   screen_clear();
+
+  const usz_t MSG_CAP = 128;
+  ch_t msg[MSG_CAP];
+  const ch_t *msg_part;
+  usz_t msg_len;
+
+  msg_len = 0;
+  msg_part = "Unhandled IRQ, id: ";
+  msg_len =
+      str_buf_marshal_str(msg, msg_len, MSG_CAP, msg_part, str_len(msg_part));
+  screen_write_at('X', SCREEN_COLOR_CYAN, SCREEN_COLOR_BLACK, msg_len, 1);
+  msg_len = str_buf_marshal_uint(msg, msg_len, MSG_CAP, (u64_t)(123));
+  //str_buf_marshal_uint(msg, msg_len, MSG_CAP, (u64_t)(INTR_ID_IRQ_TIME));
+  msg_len = str_buf_marshal_terminator(msg, msg_len, MSG_CAP);
+  kernel_panic(msg);
 
   intr_init();
 
