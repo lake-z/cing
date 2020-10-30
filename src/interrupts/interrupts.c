@@ -271,6 +271,16 @@ void intr_irq_handler(u64_t id, uptr_t stack_addr)
   const ch_t *msg_part;
   usz_t msg_len;
 
+  /* End Of Interrupt (EOI, code 0x20) command is issued to the PIC chips at 
+   * the end of an IRQ-based interrupt routine. If the IRQ came from the Master 
+   * PIC, it is sufficient to issue this command only to the Master PIC; 
+   * however if the IRQ came from the Slave PIC, it is necessary to issue the 
+   * command to both PIC chips. */
+  if (id >= 40) {
+    port_write_byte(PORT_NO_PIC_SLAVE_CMD, 0x20);
+  }
+  port_write_byte(PORT_NO_PIC_MASTER_CMD, 0x20);
+
   kernel_assert(id < INTR_ID_MAX);
   iid = (intr_id_t)id;
   hand = handlers[iid];
@@ -280,10 +290,8 @@ void intr_irq_handler(u64_t id, uptr_t stack_addr)
     msg_part = "Unhandled IRQ, id: ";
     msg_len =
         str_buf_marshal_str(msg, msg_len, MSG_CAP, msg_part, str_len(msg_part));
-    screen_write_at('X', SCREEN_COLOR_CYAN, SCREEN_COLOR_BLACK, msg_len, 1);
-    msg_len = str_buf_marshal_uint(
-        msg, msg_len, MSG_CAP, (u64_t)(iid - INTR_ID_EX_FAULT_DE));
-    msg_len = str_buf_marshal_terminator(msg, msg_len, MSG_CAP);
+    msg_len += str_buf_marshal_uint(msg, msg_len, MSG_CAP, (u64_t)iid);
+    msg_len += str_buf_marshal_terminator(msg, msg_len, MSG_CAP);
     kernel_panic(msg);
   } else {
     paras = (intr_parameters_t *)stack_addr;

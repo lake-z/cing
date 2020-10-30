@@ -1,7 +1,8 @@
+#include "kernel_main.h"
 #include "containers_string.h"
 #include "drivers_screen.h"
+#include "drivers_time.h"
 #include "interrupts.h"
-#include "kernel_main.h"
 #include "kernel_env.h"
 #include "kernel_panic.h"
 #include "kernel_port.h"
@@ -240,21 +241,6 @@ void kernal_main(u64_t addr)
   screen_init();
   screen_clear();
 
-  const usz_t MSG_CAP = 128;
-  ch_t msg[MSG_CAP];
-  const ch_t *msg_part;
-  usz_t msg_len;
-
-  msg_len = 0;
-  msg_part = "Unhandled IRQ, id: ";
-  msg_len =
-      str_buf_marshal_str(msg, msg_len, MSG_CAP, msg_part, str_len(msg_part));
-  screen_write_at('X', SCREEN_COLOR_CYAN, SCREEN_COLOR_BLACK, msg_len, 1);
-  msg_len = str_buf_marshal_uint(msg, msg_len, MSG_CAP, (u64_t)(123));
-  //str_buf_marshal_uint(msg, msg_len, MSG_CAP, (u64_t)(INTR_ID_IRQ_TIME));
-  msg_len = str_buf_marshal_terminator(msg, msg_len, MSG_CAP);
-  kernel_panic(msg);
-
   intr_init();
 
   process_boot_info((uch_t *)addr);
@@ -269,7 +255,9 @@ void kernal_main(u64_t addr)
 
   env_init_cpu_info();
 
+  time_init();
   intr_irq_enable();
+
   while (1) {
     /* This allows the CPU to enter a sleep state in which it consumes much
      * less energy. See: https://en.wikipedia.org/wiki/HLT_(x86_instruction) */
