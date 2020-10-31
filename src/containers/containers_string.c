@@ -28,6 +28,59 @@ usz_t str_buf_marshal_str(ch_t *buf,
   return str_len;
 }
 
+base_private void _buf_marshal_byte_in_hex(
+    ch_t *buf, const usz_t buf_off, const usz_t buf_len, byte_t byte)
+{
+  u64_t val;
+
+  kernel_assert(buf_off < (buf_len - 2));
+
+  val = (byte >> 4) & 0x0f;
+  if (val < 10) {
+    buf[buf_off] = (ch_t)(val + '0');
+  } else {
+    kernel_assert(val < 16);
+    buf[buf_off] = (ch_t)(val - 10 + 'A');
+  }
+
+  val = byte & 0x0f;
+  if (val < 10) {
+    buf[buf_off + 1] = (ch_t)(val + '0');
+  } else {
+    kernel_assert(val < 16);
+    buf[buf_off + 1] = (ch_t)(val - 10 + 'A');
+  }
+}
+
+usz_t str_buf_marshal_bytes_in_hex(ch_t *buf,
+    const usz_t buf_off,
+    const usz_t buf_len,
+    const byte_t *str,
+    usz_t str_len)
+{
+  usz_t buf_ptr;
+
+  kernel_assert(buf != NULL);
+  kernel_assert(str != NULL);
+  kernel_assert(str_len > 0);
+  kernel_assert(buf_len > 0);
+  kernel_assert(buf_off < buf_len);
+  kernel_assert((buf_len - buf_off) > (str_len * 3 - 1));
+
+  buf_ptr = buf_off;
+
+  _buf_marshal_byte_in_hex(buf, buf_ptr, buf_len, str[0]);
+  buf_ptr += 2;
+  for (usz_t i = 1; i < str_len; i++) {
+    buf[buf_ptr++] = ' ';
+    _buf_marshal_byte_in_hex(buf, buf_ptr, buf_len, str[i]);
+    buf_ptr += 2;
+  }
+
+  kernel_assert(buf_ptr < buf_len);
+  return buf_ptr - buf_off;
+}
+
 usz_t str_buf_marshal_uint(
     ch_t *buf, const usz_t buf_off, const usz_t buf_len, const u64_t val)
 {
@@ -73,7 +126,7 @@ usz_t str_buf_marshal_terminator(
 bo_t byte_bit_get(byte_t byte, usz_t bit)
 {
   kernel_assert(bit < 8);
-  return byte & (1 << (bit - 1));
+  return byte & (1 << bit);
 }
 
 byte_t byte_bit_set(byte_t byte, usz_t bit)

@@ -1,5 +1,6 @@
 #include "kernel_main.h"
 #include "containers_string.h"
+#include "drivers_keyboard.h"
 #include "drivers_screen.h"
 #include "drivers_time.h"
 #include "interrupts.h"
@@ -22,6 +23,7 @@ base_private void process_boot_info_str(
       (const ch_t *)addr, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
   (*row_no) += 1;
 }
+
 base_private void process_boot_info_mem_map(
     const byte_t *ptr, usz_t size base_may_unuse, usz_t *row_no)
 {
@@ -98,10 +100,14 @@ base_private void process_boot_info_mem_map(
 
     msg_ptr += str_buf_marshal_terminator(msg, msg_ptr, _MSG_LEN);
 
+    /*
     screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
     *row_no += 1;
+    */
 
-    // kernel_assert(reserve == 0);
+    /* reserve is always zero on QEMU, but seems contains random values on real 
+     * hardware
+     * kernel_assert(reserve == 0); */
   }
 }
 
@@ -167,6 +173,8 @@ base_private const byte_t *process_boot_info_tag(
   case 10: /* Advanced power management */
     break;
   case 14: /* ACPI old RSDP */
+    break;
+  case 15: /* ACPI new RSDP */
     break;
   default:
     msg_part = (ch_t *)"Invalid multiboot info tag type: ";
@@ -256,6 +264,8 @@ void kernal_main(u64_t addr)
   env_init_cpu_info();
 
   time_init();
+  keyboard_init();
+
   intr_irq_enable();
 
   while (1) {

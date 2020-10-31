@@ -43,7 +43,7 @@ message("${CMAKE_CURRENT_SOURCE_DIR}: Git revision: ${BUILD_GIT_REV}")
 add_subdirectory(src)
 
 add_custom_target(iso_create_dirs COMMAND mkdir -pv iso_files/boot/grub)
-add_dependencies(iso_create_dirs kernel)
+add_dependencies(iso_create_dirs kernel kernel_symbols)
 
 add_custom_target(iso_install_kernel COMMAND mv -v
   ${CMAKE_BINARY_DIR}/src/kernel

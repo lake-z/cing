@@ -70,3 +70,18 @@ void screen_write_uint(
 
   screen_write_str(msg, fg, bg, row, col);
 }
+
+void screen_write_byte_hex(byte_t *bytes,
+    usz_t len,
+    screen_color_t fg,
+    screen_color_t bg,
+    usz_t row,
+    usz_t col)
+{
+  ch_t msg[SCREEN_WIDTH];
+  usz_t msg_len = 0;
+  msg_len +=
+      str_buf_marshal_bytes_in_hex(msg, msg_len, SCREEN_WIDTH, bytes, len);
+  msg_len += str_buf_marshal_terminator(msg, msg_len, SCREEN_WIDTH);
+  screen_write_str(msg, fg, bg, row, col);
+}

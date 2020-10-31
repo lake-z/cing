@@ -90,6 +90,11 @@ target_link_libraries(kernel PRIVATE
 target_link_options(kernel PRIVATE --nmagic
   --script=${CMAKE_SOURCE_DIR}/scripts/linker.ld)
 
+add_custom_target(kernel_symbols COMMAND objcopy --only-keep-debug 
+  ${CMAKE_BINARY_DIR}/src/kernel ${CMAKE_BINARY_DIR}/kernel.sym
+)
+add_dependencies(kernel_symbols kernel)
+
 # Fix cide format by:
 # clang-format -style=file -fallback-style=none -sort-includes -i <path to src>
 if(BUILD_TOOL_CLANG_FORMAT)

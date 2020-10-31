@@ -29,6 +29,12 @@ usz_t str_buf_marshal_str(ch_t *buf, /* Result string */
     usz_t str_len        /* String length */
 );
 
+usz_t str_buf_marshal_bytes_in_hex(ch_t *buf,
+    const usz_t buf_off,
+    const usz_t buf_len,
+    const byte_t *str,
+    usz_t str_len) base_no_null;
+
 usz_t str_buf_marshal_terminator(
     ch_t *buf, const usz_t buf_off, const usz_t buf_len);
 #endif
