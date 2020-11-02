@@ -6,28 +6,6 @@
 base_private byte_t *const _video_buffer = (byte_t *)0xB8000;
 base_private const byte_t _CHAR_NULL = 0;
 
-base_private usz_t _offset_max(void)
-{
-  return (2 * SCREEN_WIDTH * SCREEN_HEIGHT);
-}
-
-base_private usz_t _offset_from_coord(usz_t row, usz_t col)
-{
-  kernel_assert(row < SCREEN_HEIGHT);
-  kernel_assert(col < SCREEN_WIDTH);
-  usz_t offset = 2 * (row * SCREEN_WIDTH + col);
-  kernel_assert((offset + 1) < _offset_max());
-  return offset;
-}
-
-base_private byte_t _color_code(screen_color_t fg, screen_color_t bg)
-{
-  u8_t fg_c = (u8_t)(fg);
-  u8_t bg_c = (u8_t)(bg);
-  u8_t cc = fg_c | (u8_t)(bg_c << 4);
-  return (byte_t)(cc);
-}
-
 void screen_init()
 {
   screen_cursor_disable();
@@ -56,42 +34,123 @@ void screen_blink_disable(void)
   port_write_byte(PORT_NO_VGA_ATTRIBUTE_WRITE, data);
 }
 
-void screen_write_at(
-    byte_t c, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
+base_private usz_t _offset_max(void)
+{
+  return (2 * SCREEN_WIDTH * SCREEN_HEIGHT);
+}
+
+base_private usz_t _offset_of_char(usz_t row, usz_t col)
+{
+  kernel_assert(row < SCREEN_HEIGHT);
+  kernel_assert(col < SCREEN_WIDTH);
+  usz_t offset = 2 * (row * SCREEN_WIDTH + col);
+  kernel_assert((offset + 1) < _offset_max());
+  return offset;
+}
+
+base_private usz_t _offset_of_attr(usz_t row, usz_t col)
+{
+  return _offset_of_char(row, col) + 1;
+}
+
+void screen_set_attr_at(
+    screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
+{
+  u8_t fg_c = (u8_t)(fg);
+  u8_t bg_c = (u8_t)(bg);
+  u8_t cc = fg_c | (u8_t)(bg_c << 4);
+  usz_t offset = _offset_of_attr(row, col);
+  _video_buffer[offset] = cc;
+}
+
+void screen_set_fg_at(screen_color_t fg, usz_t row, usz_t col)
+{
+  byte_t fg_c = (u8_t)(fg);
+  usz_t offset = _offset_of_attr(row, col);
+  byte_t attr = _video_buffer[offset];
+
+  attr = (byte_t)((attr & 0xf0) | fg_c);
+  _video_buffer[offset] = attr;
+}
+
+void screen_set_bg_at(screen_color_t bg, usz_t row, usz_t col)
+{
+  byte_t cc = (u8_t)(bg);
+  usz_t offset = _offset_of_attr(row, col);
+  byte_t attr = _video_buffer[offset];
+
+  attr = (byte_t)((attr & 0x0f) | (cc << 4));
+  _video_buffer[offset] = attr;
+}
+
+void screen_write_at(byte_t c, usz_t row, usz_t col)
 {
   usz_t offset;
-  byte_t cc;
 
-  offset = _offset_from_coord(row, col);
-  cc = _color_code(fg, bg);
+  offset = _offset_of_char(row, col);
   _video_buffer[offset] = c;
-  _video_buffer[offset + 1] = cc;
 }
 
-void screen_fill_bg_at(screen_color_t bg, usz_t row, usz_t col)
+void screen_clean_at(screen_color_t bg, usz_t row, usz_t col)
 {
-  screen_write_at(_CHAR_NULL, SCREEN_COLOR_WHITE, bg, row, col);
+  screen_write_at(_CHAR_NULL, row, col);
+  screen_set_bg_at(bg, row, col);
 }
 
-void screen_clear(screen_color_t bg)
+void screen_box_thin_border_v_at(usz_t row, usz_t col)
+{
+  screen_write_at((byte_t)179, row, col);
+}
+
+void screen_box_thin_border_h_at(usz_t row, usz_t col)
+{
+  screen_write_at((byte_t)196, row, col);
+}
+
+void screen_box_thin_corner_ne_at(usz_t row, usz_t col)
+{
+  screen_write_at((byte_t)191, row, col);
+}
+
+/* Draw a south west corner of thin box at given coordination */
+void screen_box_thin_corner_sw_at(usz_t row, usz_t col)
+{
+  screen_write_at((byte_t)192, row, col);
+}
+
+void screen_box_thin_corner_se_at(usz_t row, usz_t col)
+{
+  screen_write_at((byte_t)217, row, col);
+}
+
+void screen_box_thin_corner_nw_at(usz_t row, usz_t col)
+{
+  screen_write_at((byte_t)218, row, col);
+}
+
+void screen_clean(screen_color_t bg)
 {
   for (usz_t row = 0; row < SCREEN_HEIGHT; row++) {
     for (usz_t col = 0; col < SCREEN_WIDTH; col++) {
-      screen_fill_bg_at(bg, row, col);
+      screen_clean_at(bg, row, col);
     }
   }
 }
+
 /* ************************************************************************* * 
    Following APIs are deprecated, clean them up when it's feasible
  * ************************************************************************* */
-void screen_write_str(
-    const char *str, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
+void screen_write_str(const char *str,
+    screen_color_t fg base_may_unuse,
+    screen_color_t bg base_may_unuse,
+    usz_t row,
+    usz_t col)
 {
   for (usz_t i = 0; (i + col) < SCREEN_WIDTH; i++) {
     if (str[i] == '\0') {
       break;
     }
-    screen_write_at((byte_t)str[i], fg, bg, row, i + col);
+    screen_write_at((byte_t)str[i], row, i + col);
   }
 }
 

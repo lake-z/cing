@@ -68,13 +68,13 @@ base_private void keyboard_irq_handler(
 
   switch (data) {
   case 0x11:
-    screen_write_at('W', SCREEN_COLOR_RED, SCREEN_COLOR_GREEN, 0, 0);
+    screen_write_at('W', 0, 0);
     break;
   case 0x15:
-    screen_write_at('Y', SCREEN_COLOR_RED, SCREEN_COLOR_GREEN, 0, 0);
+    screen_write_at('Y', 0, 0);
     break;
   case 0x19:
-    screen_write_at('P', SCREEN_COLOR_RED, SCREEN_COLOR_GREEN, 0, 0);
+    screen_write_at('P', 0, 0);
     break;
   default:
     break;
