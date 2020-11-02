@@ -1,6 +1,7 @@
 #include "drivers_keyboard.h"
 #include "containers_string.h"
 #include "drivers_screen.h"
+#include "interrupts.h"
 #include "kernel_panic.h"
 #include "kernel_port.h"
 
@@ -82,27 +83,5 @@ base_private void keyboard_irq_handler(
 
 void keyboard_init(void)
 {
-  /*
-  byte_t data;
-
-  _wait_cmd_available();
-  _cmd_send(KEYBOARD_CMD_DISABLE_SCAN);
-
-  _wait_cmd_available();
-  _data_write(KEYBOARD_CMD_ACESS_SCAN_CODE);
-
-  _wait_cmd_available();
-  _data_write(0x00); // 0x00 for get current scancode set
-
-  _wait_data_available();
-  data = _data_read();
-
-  screen_write_byte_hex(&data, 1, SCREEN_COLOR_RED, SCREEN_COLOR_GREEN, 0, 0);
-
-  _wait_data_available();
-  data = _data_read();
-  screen_write_byte_hex(&data, 1, SCREEN_COLOR_RED, SCREEN_COLOR_GREEN, 1, 0);
-  */
-
   intr_handler_register(INTR_ID_IRQ_KEYBOARD, keyboard_irq_handler);
 }

@@ -31,6 +31,7 @@ set(BUILD_SRC_MODULES
   interrupts
   kernel
   mm
+  panel
 )
 foreach(MOD ${BUILD_SRC_MODULES})
   set(SRC_OF_MOD "")

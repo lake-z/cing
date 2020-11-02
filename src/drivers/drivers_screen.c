@@ -1,52 +1,89 @@
 #include "drivers_screen.h"
 #include "containers_string.h"
 #include "kernel_panic.h"
+#include "kernel_port.h"
 
-base_private ch_t *_video_buffer;
-base_private usz_t _col_ptr;
-base_private usz_t _row_ptr;
+base_private byte_t *const _video_buffer = (byte_t *)0xB8000;
+base_private const byte_t _CHAR_NULL = 0;
 
-base_private ch_t _color_code(screen_color_t fg, screen_color_t bg)
+base_private usz_t _offset_max(void)
+{
+  return (2 * SCREEN_WIDTH * SCREEN_HEIGHT);
+}
+
+base_private usz_t _offset_from_coord(usz_t row, usz_t col)
+{
+  kernel_assert(row < SCREEN_HEIGHT);
+  kernel_assert(col < SCREEN_WIDTH);
+  usz_t offset = 2 * (row * SCREEN_WIDTH + col);
+  kernel_assert((offset + 1) < _offset_max());
+  return offset;
+}
+
+base_private byte_t _color_code(screen_color_t fg, screen_color_t bg)
 {
   u8_t fg_c = (u8_t)(fg);
   u8_t bg_c = (u8_t)(bg);
   u8_t cc = fg_c | (u8_t)(bg_c << 4);
-  return (ch_t)(cc);
+  return (byte_t)(cc);
 }
 
 void screen_init()
 {
-  _video_buffer = (ch_t *)0xB8000;
-  _col_ptr = 0;
-  _row_ptr = 0;
+  screen_cursor_disable();
+  screen_blink_disable();
 }
 
-void screen_clear()
+void screen_cursor_disable(void)
 {
-  for (usz_t i = 0; i < 2 * SCREEN_WIDTH * SCREEN_HEIGHT; i++) {
-    _video_buffer[i] = '\0';
-  }
-
-  _col_ptr = 0;
-  _row_ptr = 0;
+  port_write_byte(PORT_NO_VGA_CMD, 0x0a);
+  port_write_byte(PORT_NO_VGA_DATA, 0x20);
 }
 
-base_private void _video_buffer_offset_verify(usz_t offset)
+void screen_blink_disable(void)
 {
-  kernel_assert(offset < (2 * SCREEN_WIDTH * SCREEN_HEIGHT));
+  byte_t data;
+
+  /* Read to reset index/data flip-flop */
+  port_read_byte(PORT_NO_VGA_STATUS_1);
+
+  /* Set register index to 0x30 */
+  port_write_byte(PORT_NO_VGA_ATTRIBUTE_WRITE, 0x30);
+
+  /* Read register contents than cleat bit 3 to disable blink */
+  data = port_read_byte(PORT_NO_VGA_ATTRIBUTE_READ);
+  data = byte_bit_clear(data, 3);
+  port_write_byte(PORT_NO_VGA_ATTRIBUTE_WRITE, data);
 }
 
 void screen_write_at(
-    ch_t c, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
+    byte_t c, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
 {
-  usz_t offset = 2 * (row * SCREEN_WIDTH + col);
-  ch_t cc = _color_code(fg, bg);
+  usz_t offset;
+  byte_t cc;
 
-  _video_buffer_offset_verify(offset + 1);
+  offset = _offset_from_coord(row, col);
+  cc = _color_code(fg, bg);
   _video_buffer[offset] = c;
   _video_buffer[offset + 1] = cc;
 }
 
+void screen_fill_bg_at(screen_color_t bg, usz_t row, usz_t col)
+{
+  screen_write_at(_CHAR_NULL, SCREEN_COLOR_WHITE, bg, row, col);
+}
+
+void screen_clear(screen_color_t bg)
+{
+  for (usz_t row = 0; row < SCREEN_HEIGHT; row++) {
+    for (usz_t col = 0; col < SCREEN_WIDTH; col++) {
+      screen_fill_bg_at(bg, row, col);
+    }
+  }
+}
+/* ************************************************************************* * 
+   Following APIs are deprecated, clean them up when it's feasible
+ * ************************************************************************* */
 void screen_write_str(
     const char *str, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col)
 {
@@ -54,7 +91,7 @@ void screen_write_str(
     if (str[i] == '\0') {
       break;
     }
-    screen_write_at(str[i], fg, bg, row, i + col);
+    screen_write_at((byte_t)str[i], fg, bg, row, i + col);
   }
 }
 

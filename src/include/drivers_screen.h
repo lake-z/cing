@@ -26,9 +26,12 @@ typedef enum {
 } screen_color_t;
 
 void screen_init(void);
-void screen_clear(void);
+void screen_cursor_disable(void);
+void screen_blink_disable(void);
 void screen_write_at(
-    ch_t c, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col);
+    byte_t c, screen_color_t fg, screen_color_t bg, usz_t row, usz_t col);
+void screen_fill_bg_at(screen_color_t bg, usz_t row, usz_t col);
+void screen_clear(screen_color_t bg);
 
 void screen_write_str(const char *str,
     screen_color_t fg,

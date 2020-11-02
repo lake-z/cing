@@ -8,6 +8,7 @@
 #include "kernel_panic.h"
 #include "kernel_port.h"
 #include "mm_low.h"
+#include "panel.h"
 
 /* Forwarded declarations */
 base_private void process_boot_info_str(
@@ -247,26 +248,16 @@ base_private void process_boot_info(const byte_t *addr)
 void kernal_main(u64_t addr)
 {
   screen_init();
-  screen_clear();
-
   intr_init();
-
-  process_boot_info((uch_t *)addr);
-
-  /*
-  ch_t *x = (ch_t *)(u64_literal(1024)* u64_literal(1024)* u64_literal(1024 ) * 
-    u64_literal(2));
-  *x = 'a';
-  *(x+1) = '\0';
-  screen_write_str(x, SCREEN_COLOR_CYAN, SCREEN_COLOR_BLACK, 10, 0);
-  */
-
-  env_init_cpu_info();
-
   time_init();
   keyboard_init();
 
   intr_irq_enable();
+
+  process_boot_info((uch_t *)addr);
+  env_init_cpu_info();
+
+  panel_start();
 
   while (1) {
     /* This allows the CPU to enter a sleep state in which it consumes much
