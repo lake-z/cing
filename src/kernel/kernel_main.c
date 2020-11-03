@@ -1,5 +1,6 @@
 #include "kernel_main.h"
 #include "containers_string.h"
+#include "drivers_acpi.h"
 #include "drivers_keyboard.h"
 #include "drivers_screen.h"
 #include "drivers_time.h"
@@ -11,10 +12,13 @@
 #include "panel.h"
 
 /* Forwarded declarations */
-base_private void process_boot_info_str(
-    const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no) base_no_null;
 
-base_private void process_boot_info_str(
+void process_boot_info_str(
+    const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no) base_no_null;
+void process_boot_info_mem_map(
+    const byte_t *ptr, usz_t size base_may_unuse, usz_t *row_no);
+
+void process_boot_info_str(
     const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no)
 {
   usz_t len = str_len((const ch_t *)addr);
@@ -25,7 +29,7 @@ base_private void process_boot_info_str(
   (*row_no) += 1;
 }
 
-base_private void process_boot_info_mem_map(
+void process_boot_info_mem_map(
     const byte_t *ptr, usz_t size base_may_unuse, usz_t *row_no)
 {
   base_private const usz_t _MSG_LEN = 128;
@@ -141,14 +145,14 @@ base_private const byte_t *process_boot_info_tag_header(
   msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, *size);
 
   msg[msg_ptr] = '\0';
-  screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
+  // screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
   *row_no += 1;
 
   return ptr;
 }
 
 base_private const byte_t *process_boot_info_tag(
-    const byte_t *ptr, u32_t type, u32_t size, usz_t *row_no)
+    const byte_t *ptr, u32_t type, u32_t size, usz_t *row_no base_may_unuse)
 {
   base_private const usz_t _MSG_LEN = 128;
   ch_t msg[_MSG_LEN];
@@ -157,15 +161,15 @@ base_private const byte_t *process_boot_info_tag(
 
   switch (type) {
   case 1: /* Boot command line */
-  case 2: /* Boot loader name */
-    process_boot_info_str(ptr, size, row_no);
+  case 2: /* Boot loader name
+    process_boot_info_str(ptr, size, row_no); */
     break;
   case 4: /* Old memory information */
     break;
   case 5: /* BIOS boot device */
     break;
   case 6:
-    process_boot_info_mem_map(ptr, size, row_no);
+    /*process_boot_info_mem_map(ptr, size, row_no);*/
     break;
   case 8: /* Frame buffer information */
     break;
@@ -173,9 +177,9 @@ base_private const byte_t *process_boot_info_tag(
     break;
   case 10: /* Advanced power management */
     break;
-  case 14: /* ACPI old RSDP */
-    break;
-  case 15: /* ACPI new RSDP */
+  case 14:                    /* ACPI old RSDP */
+  case 15:                    /* ACPI new RSDP */
+    acpi_init(ptr, size - 8); /* Minus header length */
     break;
   default:
     msg_part = (ch_t *)"Invalid multiboot info tag type: ";
@@ -242,22 +246,22 @@ base_private void process_boot_info(const byte_t *addr)
       str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
   msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, (u64_t)(ptr - addr));
   msg[msg_ptr] = '\0';
-  screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, row_no++, 0);
+  // screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, row_no++, 0);
 }
 
 void kernal_main(u64_t addr)
 {
   screen_init();
+
   intr_init();
   time_init();
   keyboard_init();
-
   intr_irq_enable();
 
-  process_boot_info((uch_t *)addr);
-  env_init_cpu_info();
-
   panel_start();
+
+  process_boot_info((uch_t *)addr);
+  // env_init_cpu_info();
 
   while (1) {
     /* This allows the CPU to enter a sleep state in which it consumes much

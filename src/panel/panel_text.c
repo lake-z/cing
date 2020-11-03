@@ -20,7 +20,7 @@ void panel_text_init(
   tx->window_head = 0;
 }
 
-base_private usz_t panel_text_width(panel_text_t *txt)
+usz_t panel_text_width(panel_text_t *txt)
 {
   kernel_assert(txt != NULL);
   return txt->end_col - txt->start_col - 1;

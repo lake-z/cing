@@ -25,13 +25,14 @@ SET_SOURCE_FILES_PROPERTIES(
 )
 
 set(BUILD_SRC_MODULES 
-  include
   containers  
   drivers
   interrupts
   kernel
+  log
   mm
   panel
+  include
 )
 foreach(MOD ${BUILD_SRC_MODULES})
   set(SRC_OF_MOD "")

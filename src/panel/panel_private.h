@@ -4,7 +4,7 @@
 #include "drivers_screen.h"
 #include "panel.h"
 
-struct panel_text_t {
+struct panel_text {
   usz_t start_row;
   usz_t start_col;
   usz_t end_row;

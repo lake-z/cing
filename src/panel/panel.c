@@ -55,14 +55,9 @@ void panel_start(void)
 
   panel_text_init(&_log_txt, 1, 0, SCREEN_HEIGHT - 2, SCREEN_WIDTH - 1);
   panel_text_draw(&_log_txt);
-
-  bo_t ok;
-  ok = panel_text_write_row(&_log_txt, "abc", str_len("abc"));
-  kernel_assert(ok);
-  panel_text_draw(&_log_txt);
 }
 
-panel_text_t *panel_get_log_text()
+panel_text_t *panel_get_log_text(void)
 {
   return &_log_txt;
 }

@@ -7,7 +7,7 @@ bo_t byte_bit_get(byte_t byte, usz_t bit);
 byte_t byte_bit_set(byte_t byte, usz_t bit);
 byte_t byte_bit_clear(byte_t byte, usz_t bit);
 
-usz_t str_len(const char *str);
+usz_t str_len(const ch_t *str);
 
 /*
  * Add unsigned int value into result string.
