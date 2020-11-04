@@ -26,6 +26,7 @@ SET_SOURCE_FILES_PROPERTIES(
 
 set(BUILD_SRC_MODULES 
   containers  
+  cpu
   drivers
   interrupts
   kernel
