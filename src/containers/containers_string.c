@@ -4,11 +4,7 @@
 
 usz_t str_len(const ch_t *str)
 {
-  usz_t len;
-
-  kernel_assert(str != NULL);
-
-  len = 0;
+  usz_t len = 0;
   while (str[len] != '\0') {
     len++;
   }

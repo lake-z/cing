@@ -5,14 +5,27 @@
 #include "drivers_screen.h"
 #include "drivers_time.h"
 #include "interrupts.h"
-#include "kernel_env.h"
 #include "kernel_panic.h"
 #include "kernel_port.h"
-#include "mm_low.h"
+#include "log.h"
+#include "mm.h"
 #include "panel.h"
 
-/* Forwarded declarations */
+typedef enum {
+  MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS = 9,
+} multi_boot_tag_type_t;
 
+#define MULTI_BOOT_INFO_SLOT_COUNT 128
+typedef struct {
+  const byte_t *addr;
+  usz_t total_size;
+  const byte_t *ptrs[MULTI_BOOT_INFO_SLOT_COUNT];
+  usz_t lens[MULTI_BOOT_INFO_SLOT_COUNT];
+} multi_boot_info_t;
+
+base_private multi_boot_info_t _boot_info;
+
+/* Forwarded declarations */
 void process_boot_info_str(
     const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no) base_no_null;
 void process_boot_info_mem_map(
@@ -116,43 +129,8 @@ void process_boot_info_mem_map(
   }
 }
 
-base_private const byte_t *process_boot_info_tag_header(
-    const byte_t *ptr, u32_t *type, u32_t *size, usz_t *row_no)
-{
-  kernel_assert((((uptr_t)ptr) % 8) == 0);
-
-  *type = *(u32_t *)ptr;
-  ptr += 4;
-  *size = *(u32_t *)ptr;
-  ptr += 4;
-
-  (void)(row_no);
-
-  base_private const usz_t _MSG_LEN = 128;
-  ch_t msg[_MSG_LEN];
-  usz_t msg_ptr;
-  ch_t *msg_part;
-
-  msg_ptr = 0;
-  msg_part = (ch_t *)"type: ";
-  msg_ptr +=
-      str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, *type);
-
-  msg_part = (ch_t *)", size: ";
-  msg_ptr +=
-      str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, *size);
-
-  msg[msg_ptr] = '\0';
-  // screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
-  *row_no += 1;
-
-  return ptr;
-}
-
-base_private const byte_t *process_boot_info_tag(
-    const byte_t *ptr, u32_t type, u32_t size, usz_t *row_no base_may_unuse)
+base_private const byte_t *_boot_info_process_tag(
+    multi_boot_info_t *info, const byte_t *ptr, u32_t type, u32_t size)
 {
   base_private const usz_t _MSG_LEN = 128;
   ch_t msg[_MSG_LEN];
@@ -177,9 +155,8 @@ base_private const byte_t *process_boot_info_tag(
     break;
   case 10: /* Advanced power management */
     break;
-  case 14:                    /* ACPI old RSDP */
-  case 15:                    /* ACPI new RSDP */
-    acpi_init(ptr, size - 8); /* Minus header length */
+  case 14: /* ACPI old RSDP */
+  case 15: /* ACPI new RSDP */
     break;
   default:
     msg_part = (ch_t *)"Invalid multiboot info tag type: ";
@@ -191,77 +168,98 @@ base_private const byte_t *process_boot_info_tag(
     kernel_panic(msg);
     break;
   }
+
+  kernel_assert(type < MULTI_BOOT_INFO_SLOT_COUNT);
+  kernel_assert(info->ptrs[type] == NULL);
+  kernel_assert(info->lens[type] == 0);
+  info->lens[type] = size - 8;
+  info->ptrs[type] = ptr;
   return ptr + size - 8; /* 8 bytes of header is already passed */
 }
 
-base_private void process_boot_info(const byte_t *addr)
+base_private const byte_t *_boot_info_process_tag_header(
+    const byte_t *ptr, u32_t *type, u32_t *size)
+{
+  kernel_assert((((uptr_t)ptr) % 8) == 0);
+
+  *type = *(u32_t *)ptr;
+  ptr += 4;
+  *size = *(u32_t *)ptr;
+  ptr += 4;
+
+  return ptr;
+}
+
+/* multi_boot_info_t must be initialized before calling this function */
+base_private void _boot_info_process(multi_boot_info_t *info)
 {
   /* Multiboot 2 boot information is defined by specification:
    * https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html
    *         #Boot-information-format*/
-  base_private const usz_t _MSG_LEN = 128;
-  ch_t msg[_MSG_LEN];
-  usz_t msg_ptr;
-  ch_t *msg_part;
-  usz_t row_no;
-  u32_t total_size;
   u32_t reserved;
   u32_t type;
   u32_t size;
-  const byte_t *ptr = addr;
+  const byte_t *ptr = info->addr;
 
-  row_no = 0;
-  screen_write_str("MULTIBOOT INFORMATION", SCREEN_COLOR_LIGHT_GREY,
-      SCREEN_COLOR_BLACK, row_no++, 0);
-
-  total_size = *(u32_t *)ptr;
+  info->total_size = *(u32_t *)ptr;
   ptr += 4;
   reserved = *(u32_t *)ptr;
   ptr += 4;
   kernel_assert(reserved == 0);
 
-  msg_ptr = 0;
-  msg_part = (ch_t *)"total_size: ";
-  msg_ptr +=
-      str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, total_size);
-  msg[msg_ptr] = '\0';
-  screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, row_no++, 0);
-
-  while ((ptr - addr) < total_size) {
-    ptr = process_boot_info_tag_header(ptr, &type, &size, &row_no);
+  while (((uptr_t)ptr - ((uptr_t)info->addr)) < (info->total_size)) {
+    ptr = _boot_info_process_tag_header(ptr, &type, &size);
     if (type == 0) {
       break;
     } else {
-      ptr = process_boot_info_tag(ptr, type, size, &row_no);
+      ptr = _boot_info_process_tag(&_boot_info, ptr, type, size);
     }
 
-    ptr = (const byte_t *)mm_ptr_align_up((vptr_t)ptr, 8);
+    ptr = (const byte_t *)mm_align_up((vptr_t)ptr, 8);
   }
 
-  kernel_assert((ptr - addr) == total_size);
-  msg_ptr = 0;
-  msg_part = (ch_t *)"total processed length: ";
-  msg_ptr +=
-      str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, (u64_t)(ptr - addr));
-  msg[msg_ptr] = '\0';
-  // screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, row_no++, 0);
+  kernel_assert(((uptr_t)ptr - ((uptr_t)info->addr)) == (info->total_size));
+}
+
+base_private void _boot_info_init(multi_boot_info_t *info, const byte_t *addr)
+{
+  info->addr = addr;
+  for (usz_t i = 0; i < MULTI_BOOT_INFO_SLOT_COUNT; i++) {
+    info->ptrs[i] = NULL;
+    info->lens[i] = 0;
+  }
 }
 
 void kernal_main(u64_t addr)
 {
   screen_init();
 
+  _boot_info_init(&_boot_info, (const byte_t *)addr);
+  _boot_info_process(&_boot_info);
+
+  panel_start();
+
+  kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != NULL);
+  kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
+  mm_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
+      _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS]);
+
   intr_init();
   time_init();
   keyboard_init();
   intr_irq_enable();
 
-  panel_start();
+  // acpi_init(ptr, size - 8); /* Minus header length */
 
-  process_boot_info((uch_t *)addr);
-  // env_init_cpu_info();
+  /* Some temp tests following ***********************************************/
+
+  /* Test able to acess pointer NULL, this behaviour may be protected by a 
+   * guard page 
+  ch_t *str = NULL;
+  str[0] = 'A';
+  str[1] = '\0';
+  log_info(str, str_len(str));
+  */
 
   while (1) {
     /* This allows the CPU to enter a sleep state in which it consumes much
