@@ -12,6 +12,7 @@
 #include "panel.h"
 
 typedef enum {
+  MULTI_BOOT_TAG_TYPE_MMAP = 6,
   MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS = 9,
 } multi_boot_tag_type_t;
 
@@ -40,93 +41,6 @@ void process_boot_info_str(
   screen_write_str(
       (const ch_t *)addr, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
   (*row_no) += 1;
-}
-
-void process_boot_info_mem_map(
-    const byte_t *ptr, usz_t size base_may_unuse, usz_t *row_no)
-{
-  base_private const usz_t _MSG_LEN = 128;
-  ch_t msg[_MSG_LEN];
-  usz_t msg_ptr;
-  ch_t *msg_part;
-  u32_t entry_size;
-  u32_t entry_ver;
-  u64_t entry_cnt;
-
-  entry_size = *(u32_t *)ptr;
-  ptr += 4;
-
-  entry_ver = *(u32_t *)ptr;
-  ptr += 4;
-
-  msg_ptr = 0;
-  msg_part = (ch_t *)"entry size: ";
-  msg_ptr +=
-      str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, entry_size);
-  msg_part = (ch_t *)", version: ";
-  msg_ptr +=
-      str_buf_marshal_str(msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-  msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, entry_ver);
-  msg_ptr += str_buf_marshal_terminator(msg, msg_ptr, _MSG_LEN);
-  screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
-  *row_no += 1;
-  kernel_assert(entry_ver == 0);
-  kernel_assert(entry_size == 24);
-
-  kernel_assert((size - 8 - 8) % entry_size == 0);
-  entry_cnt = (size - 8 - 8) / entry_size;
-
-  for (u64_t en = 0; en < entry_cnt; en++) {
-    u64_t base;
-    u64_t len;
-    u32_t type;
-    u32_t reserve;
-
-    base = *(u64_t *)ptr;
-    ptr += 8;
-
-    len = *(u64_t *)ptr;
-    ptr += 8;
-
-    type = *(u32_t *)ptr;
-    ptr += 4;
-
-    reserve = *(u32_t *)ptr;
-    ptr += 4;
-
-    msg_ptr = 0;
-    msg_part = (ch_t *)"base: ";
-    msg_ptr += str_buf_marshal_str(
-        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-    msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, base);
-
-    msg_part = (ch_t *)", len: ";
-    msg_ptr += str_buf_marshal_str(
-        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-    msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, len);
-
-    msg_part = (ch_t *)", type: ";
-    msg_ptr += str_buf_marshal_str(
-        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-    msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, type);
-
-    msg_part = (ch_t *)", reserved: ";
-    msg_ptr += str_buf_marshal_str(
-        msg, msg_ptr, _MSG_LEN, msg_part, str_len(msg_part));
-    msg_ptr += str_buf_marshal_uint(msg, msg_ptr, _MSG_LEN, reserve);
-
-    msg_ptr += str_buf_marshal_terminator(msg, msg_ptr, _MSG_LEN);
-
-    /*
-    screen_write_str(msg, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
-    *row_no += 1;
-    */
-
-    /* reserve is always zero on QEMU, but seems contains random values on real 
-     * hardware
-     * kernel_assert(reserve == 0); */
-  }
 }
 
 base_private const byte_t *_boot_info_process_tag(
@@ -241,8 +155,12 @@ void kernal_main(u64_t addr)
 
   kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != NULL);
   kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
+  kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP] != NULL);
+  kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_MMAP] != 0);
   mm_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
-      _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS]);
+      _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
+      _boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP],
+      _boot_info.lens[MULTI_BOOT_TAG_TYPE_MMAP]);
 
   intr_init();
   time_init();

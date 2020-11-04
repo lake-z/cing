@@ -55,7 +55,7 @@ set(BUILD_FLAGS_COMPILE_KERNEL -ffreestanding -nostdlib -fno-builtin
   -mno-red-zone -std=gnu11 -fstack-protector-all
 )
 set(BUILD_FLAGS_COMPILE_WARNINGS
-  -pedantic
+  # -pedantic
   -Wall -Werror
   -Wbad-function-cast
   -Wcast-align

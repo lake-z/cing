@@ -1,13 +1,12 @@
-#include "mm.h"
 #include "containers_string.h"
 #include "kernel_panic.h"
 #include "log.h"
+#include "mm_private.h"
 
 base_private uptr_t _kernel_start;
 base_private uptr_t _kernel_end;
 
-/**                                                                                
- * @see                                                                            
+/* @see
  * https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#Section_header  
  */
 typedef struct multiboot_elf_sections_entry {
@@ -45,19 +44,26 @@ vptr_t mm_align_up(vptr_t p, u64_t align)
   return (vptr_t)intp;
 }
 
-/* Input multi boot information about kernel ELF sections */
-void mm_init(const byte_t *boot_info, usz_t info_len base_may_unuse)
+void mm_init(const byte_t *kernel_elf_info,
+    usz_t elf_info_len base_may_unuse,
+    const byte_t *mmap_info,
+    usz_t mmap_info_len)
 {
   base_private const usz_t _MSG_CAP = 80;
   ch_t msg[_MSG_CAP];
   usz_t msg_len;
   const ch_t *msg_part;
 
-  multiboot_tag_elf_sections_t *secs =
-      (multiboot_tag_elf_sections_t *)boot_info;
+  multiboot_tag_elf_sections_t *secs;
   multiboot_elf_sections_entry_t *entry;
-  usz_t sec_cnt = secs->num;
-  usz_t sec_size = secs->section_size;
+  usz_t sec_cnt;
+  usz_t sec_size;
+
+  mm_page_init_mmap_info(mmap_info, mmap_info_len);
+
+  secs = (multiboot_tag_elf_sections_t *)kernel_elf_info;
+  sec_cnt = secs->num;
+  sec_size = secs->section_size;
 
   _kernel_start = U64_MAX;
   _kernel_end = 0;
@@ -94,7 +100,10 @@ void mm_init(const byte_t *boot_info, usz_t info_len base_may_unuse)
     log_info(msg, msg_len);
   }
 
+  /* Kernel image is impossible to be that large */
+  kernel_assert((_kernel_end - _kernel_start) < 1024 * 1024 * 1024);
   /* Verify this function must be with in kernel image */
   kernel_assert((uptr_t)mm_init < _kernel_end);
   kernel_assert((uptr_t)mm_init > _kernel_start);
+  kernel_assert(mm_page_phy_addr_range_valid(_kernel_start, _kernel_end));
 }

@@ -59,6 +59,7 @@ typedef uintptr_t uptr_t;
 #define PRINT_STR "%s"
 
 #define base_may_unuse __attribute__((unused))
+#define base_mark_unuse(x) (void)(x)
 
 #define base_likely(x) __builtin_expect((x) != 0, 1)
 #define base_unlikely(x) __builtin_expect((x) != 0, 0)
