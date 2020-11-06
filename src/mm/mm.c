@@ -34,6 +34,13 @@ base_private inline bo_t _math_is_pow2(u64_t n)
   return base_likely(!((n) & ((n)-1)));
 }
 
+void mm_copy(byte_t *dest, const byte_t *src, usz_t copy_len)
+{
+  for (usz_t i = 0; i < copy_len; i++) {
+    dest[i] = src[i];
+  }
+}
+
 vptr_t mm_align_up(vptr_t p, u64_t align)
 {
   uptr_t intp = (uptr_t)p;

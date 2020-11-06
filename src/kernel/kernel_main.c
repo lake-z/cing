@@ -17,8 +17,9 @@ typedef enum {
 } multi_boot_tag_type_t;
 
 #define MULTI_BOOT_INFO_SLOT_COUNT 128
+#define MULTI_BOOT_INFO_CAP (1024 * 1024)
 typedef struct {
-  const byte_t *addr;
+  const byte_t info[MULTI_BOOT_INFO_CAP];
   usz_t total_size;
   const byte_t *ptrs[MULTI_BOOT_INFO_SLOT_COUNT];
   usz_t lens[MULTI_BOOT_INFO_SLOT_COUNT];
@@ -105,7 +106,7 @@ base_private const byte_t *_boot_info_process_tag_header(
 }
 
 /* multi_boot_info_t must be initialized before calling this function */
-base_private void _boot_info_process(multi_boot_info_t *info)
+base_private void _boot_info_process(multi_boot_info_t *info, const byte_t *boot)
 {
   /* Multiboot 2 boot information is defined by specification:
    * https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html
@@ -113,15 +114,24 @@ base_private void _boot_info_process(multi_boot_info_t *info)
   u32_t reserved;
   u32_t type;
   u32_t size;
-  const byte_t *ptr = info->addr;
+  const byte_t *ptr = boot;
 
   info->total_size = *(u32_t *)ptr;
   ptr += 4;
   reserved = *(u32_t *)ptr;
   ptr += 4;
+  kernel_assert((info->total_size) < MULTI_BOOT_INFO_CAP);
   kernel_assert(reserved == 0);
 
-  while (((uptr_t)ptr - ((uptr_t)info->addr)) < (info->total_size)) {
+  /* Initialize fields */
+  mm_copy((byte_t *)info->info, boot, info->total_size);
+  for (usz_t i = 0; i < MULTI_BOOT_INFO_SLOT_COUNT; i++) {
+    info->ptrs[i] = NULL;
+    info->lens[i] = 0;
+  }
+  ptr = info->info + 8;
+
+  while (((uptr_t)ptr - ((uptr_t)info->info)) < (info->total_size)) {
     ptr = _boot_info_process_tag_header(ptr, &type, &size);
     if (type == 0) {
       break;
@@ -132,27 +142,25 @@ base_private void _boot_info_process(multi_boot_info_t *info)
     ptr = (const byte_t *)mm_align_up((vptr_t)ptr, 8);
   }
 
-  kernel_assert(((uptr_t)ptr - ((uptr_t)info->addr)) == (info->total_size));
-}
-
-base_private void _boot_info_init(multi_boot_info_t *info, const byte_t *addr)
-{
-  info->addr = addr;
-  for (usz_t i = 0; i < MULTI_BOOT_INFO_SLOT_COUNT; i++) {
-    info->ptrs[i] = NULL;
-    info->lens[i] = 0;
-  }
+  kernel_assert(((uptr_t)ptr - ((uptr_t)info->info)) == (info->total_size));
 }
 
 void kernal_main(u64_t addr)
 {
   screen_init();
 
-  _boot_info_init(&_boot_info, (const byte_t *)addr);
-  _boot_info_process(&_boot_info);
+  _boot_info_process(&_boot_info, (const byte_t *)addr);
+
+  intr_init();
+  // time_init();
+  keyboard_init();
+  intr_irq_enable();
 
   panel_start();
 
+  // acpi_init(ptr, size - 8); /* Minus header length */
+
+  /* Initialize mm module at last, so we can discard multiboot info safely */
   kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != NULL);
   kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
   kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP] != NULL);
@@ -161,13 +169,6 @@ void kernal_main(u64_t addr)
       _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[MULTI_BOOT_TAG_TYPE_MMAP]);
-
-  intr_init();
-  time_init();
-  keyboard_init();
-  intr_irq_enable();
-
-  // acpi_init(ptr, size - 8); /* Minus header length */
 
   /* Some temp tests following ***********************************************/
 

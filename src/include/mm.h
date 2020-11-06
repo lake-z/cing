@@ -8,5 +8,6 @@ void mm_init(const byte_t *kernel_elf_info,
     const byte_t *mmap_info,
     usz_t mmap_info_len);
 vptr_t mm_align_up(vptr_t p, u64_t align) base_no_null;
+void mm_copy(byte_t *dest, const byte_t *src, usz_t copy_len);
 
 #endif
