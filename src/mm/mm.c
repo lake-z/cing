@@ -41,6 +41,14 @@ void mm_copy(byte_t *dest, const byte_t *src, usz_t copy_len)
   }
 }
 
+void mm_clean(vptr_t mem, usz_t size)
+{
+  kernel_assert(size > 0);
+  for (usz_t i = 0; i < size; i++) {
+    ((byte_t *)mem)[i] = 0;
+  }
+}
+
 vptr_t mm_align_up(vptr_t p, u64_t align)
 {
   uptr_t intp = (uptr_t)p;
@@ -49,6 +57,11 @@ vptr_t mm_align_up(vptr_t p, u64_t align)
   kernel_assert(_math_is_pow2(align));
   intp = ((intp + a) & ~a);
   return (vptr_t)intp;
+}
+
+bo_t mm_align_check(vptr_t p, u64_t align)
+{
+  return ((uptr_t)p) % align == 0;
 }
 
 void mm_init(const byte_t *kernel_elf_info,
@@ -66,7 +79,11 @@ void mm_init(const byte_t *kernel_elf_info,
   usz_t sec_cnt;
   usz_t sec_size;
 
+  log_info("mm_init started");
+
   mm_page_init_mmap_info(mmap_info, mmap_info_len);
+
+  log_info("mm_page_init_mmap_info finished");
 
   secs = (multiboot_tag_elf_sections_t *)kernel_elf_info;
   sec_cnt = secs->num;
@@ -104,7 +121,7 @@ void mm_init(const byte_t *kernel_elf_info,
     msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, entry->size);
     str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
 
-    log_info(msg, msg_len);
+    log_info_len(msg, msg_len);
   }
 
   /* Kernel image is impossible to be that large */
@@ -113,4 +130,18 @@ void mm_init(const byte_t *kernel_elf_info,
   kernel_assert((uptr_t)mm_init < _kernel_end);
   kernel_assert((uptr_t)mm_init > _kernel_start);
   kernel_assert(mm_page_phy_addr_range_valid(_kernel_start, _kernel_end));
+
+  msg_len = 0;
+  msg_part = "kernel start =";
+  msg_len += str_buf_marshal_str(
+        msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, _kernel_start);
+  msg_part = ", end =";
+  msg_len += str_buf_marshal_str(
+        msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, _kernel_end);
+  msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
+  log_info_len(msg, msg_len);
+    
+  page_early_tab_load(_kernel_start, _kernel_end);
 }

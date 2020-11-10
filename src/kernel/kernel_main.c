@@ -4,6 +4,7 @@
 #include "drivers_keyboard.h"
 #include "drivers_screen.h"
 #include "drivers_time.h"
+#include "drivers_serial.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
 #include "kernel_port.h"
@@ -14,6 +15,8 @@
 typedef enum {
   MULTI_BOOT_TAG_TYPE_MMAP = 6,
   MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS = 9,
+  MULTI_BOOT_TAG_TYPE_ACPI_OLD = 14,
+  MULTI_BOOT_TAG_TYPE_ACPI_NEW = 15,
 } multi_boot_tag_type_t;
 
 #define MULTI_BOOT_INFO_SLOT_COUNT 128
@@ -152,23 +155,46 @@ void kernal_main(u64_t addr)
   _boot_info_process(&_boot_info, (const byte_t *)addr);
 
   intr_init();
-  // time_init();
+  serial_init();
+  log_info("kernel_prototype started..");
+  time_init();
   keyboard_init();
   intr_irq_enable();
 
   panel_start();
 
-  // acpi_init(ptr, size - 8); /* Minus header length */
-
-  /* Initialize mm module at last, so we can discard multiboot info safely */
   kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != NULL);
   kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
   kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP] != NULL);
   kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_MMAP] != 0);
+
+  base_private const usz_t _MSG_CAP = 80;
+  ch_t msg[_MSG_CAP];
+  usz_t msg_len;
+  const ch_t *msg_part;
+
+  msg_len = 0;
+  msg_part = "boot info: ";
+  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)addr);
+  msg_part = ", elf symbols: ";
+  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS]);
+  msg_part = ", mmap: ";
+  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP]);
+  msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
+  log_info_len(msg, msg_len);
+
   mm_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[MULTI_BOOT_TAG_TYPE_MMAP]);
+
+  kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
+  kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
+  acpi_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ACPI_OLD], 
+      _boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
 
   /* Some temp tests following ***********************************************/
 

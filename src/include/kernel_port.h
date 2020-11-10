@@ -15,6 +15,7 @@ typedef enum {
   PORT_NO_VGA_STATUS_1 = 0x3da,
   PORT_NO_VGA_ATTRIBUTE_WRITE = 0x3c0,
   PORT_NO_VGA_ATTRIBUTE_READ = 0x3c1,
+  PORT_NO_SERIAL_COM1 = 0x3f8,
 } port_no_t;
 
 void port_write_byte(port_no_t port, byte_t data);

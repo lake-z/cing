@@ -253,12 +253,22 @@ void intr_irq_disable(void)
 void intr_isr_handler(u64_t id, uptr_t stack_addr)
 {
   intr_id_t iid;
+  const usz_t MSG_CAP = 128;
+  ch_t msg[MSG_CAP];
+  const ch_t *msg_part;
+  usz_t msg_len;
 
   kernel_assert(id < INTR_ID_MAX);
   iid = (intr_id_t)id;
 
-  kernel_panic("TODO: intr_isr_handler");
-  (void)(iid + stack_addr);
+  msg_len = 0;
+  msg_part = "TODO: intr_isr_handler, id = ";
+  msg_len += str_buf_marshal_str(msg, msg_len, MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, MSG_CAP, iid);
+  msg_len += str_buf_marshal_terminator(msg, msg_len, MSG_CAP);
+  kernel_panic(msg);
+
+  (void)(stack_addr);
 }
 
 void intr_irq_handler(u64_t id, uptr_t stack_addr)

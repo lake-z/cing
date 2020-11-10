@@ -57,7 +57,7 @@ set(BUILD_FLAGS_COMPILE_KERNEL -ffreestanding -nostdlib -fno-builtin
 set(BUILD_FLAGS_COMPILE_WARNINGS
   # -pedantic
   -Wall -Werror
-  -Wbad-function-cast
+  # -Wbad-function-cast
   -Wcast-align
   -Wconversion
   -Wextra

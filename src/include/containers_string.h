@@ -6,6 +6,7 @@
 bo_t byte_bit_get(byte_t byte, usz_t bit);
 byte_t byte_bit_set(byte_t byte, usz_t bit);
 byte_t byte_bit_clear(byte_t byte, usz_t bit);
+byte_t byte_get(u64_t ival, usz_t byte);
 
 usz_t str_len(const ch_t *str);
 

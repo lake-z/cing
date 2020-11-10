@@ -2,7 +2,9 @@
 #include "containers_string.h"
 #include "kernel_panic.h"
 #include "panel.h"
+#include "drivers_serial.h"
 
+/*
 void log_info(const ch_t *str, usz_t len)
 {
   base_private const usz_t _MSG_LEN = 80;
@@ -42,4 +44,16 @@ void log_info(const ch_t *str, usz_t len)
   }
 
   panel_text_draw(txt);
+}
+*/
+
+void log_info_len(const ch_t *str, usz_t len)
+{
+  serial_write_str("[INF] ", 6);
+  serial_write_str(str, len);
+  serial_write_str("\r\n", 2);
+}
+
+void log_info(const ch_t *str) {
+  log_info_len(str, str_len(str));
 }

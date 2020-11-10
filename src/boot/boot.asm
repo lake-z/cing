@@ -196,7 +196,7 @@ p2_table:
 ; cf. http://os.phil-opp.com/allocating-frames.html
 ; the stack now has 16kB (four pages)
 stack_bottom:
-    resb 4096 * 4
+    resb 1024 * 1024
 stack_top:
 
 ; -----------------------------------------------------------------------------
