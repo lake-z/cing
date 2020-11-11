@@ -214,6 +214,10 @@ base_private void _intr_init_idt(void)
       (byte_t)(IRQ_HANDLER_BASE + 3), IDT_GATE_TYPE_INTERRUPT, (uptr_t)irq3);
   _idt_gate_encode(
       (byte_t)(IRQ_HANDLER_BASE + 4), IDT_GATE_TYPE_INTERRUPT, (uptr_t)irq4);
+
+  for (usz_t i = (IDT_GATE_COUNT - 1); i > IRQ_HANDLER_BASE; i--) {
+    _idt_gate_encode(i, IDT_GATE_TYPE_INTERRUPT, (uptr_t)isr31);
+  }
 }
 
 base_private void _intr_load_idt_register(void)

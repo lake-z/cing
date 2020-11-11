@@ -136,34 +136,13 @@ base_private void _early_map_add(page_tab_entry_t *p4, uptr_t *next_frame,
   kernel_assert(mm_align_check(vaddr, PAGE_SIZE_2M));
   kernel_assert(mm_align_check(paddr, PAGE_SIZE_2M));
 
-  msg_len = 0;
-  msg_part = "Mapping (";
-  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (uptr_t)vaddr);
-  msg_part = ",";
-  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (uptr_t)paddr);
-  msg_part = "):";
-  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-
   ptab = p4;
   for(page_tab_level_t i = PAGE_TAB_LEVEL_HIGHEST; i > 2; i--) {
     idx = _vaddr_tab_index(vaddr, i);
     kernel_assert(idx < PAGE_TAB_ENTRY_COUNT);
     entry = ptab + idx;
 
-    msg_part = "(";
-    msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-    msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, i);
-    msg_part = ",";
-    msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-    msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, idx);
-    msg_part = ",";
-    msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-    msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (uptr_t)entry);
-    msg_part = "); ";
-    msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
- 
+
     if(!_page_tab_entry_is_inited(ptab, idx)) {
       mm_clean((vptr_t)(*next_frame), PAGE_SIZE_4K);
       *(uptr_t *)entry = *next_frame;
@@ -176,15 +155,27 @@ base_private void _early_map_add(page_tab_entry_t *p4, uptr_t *next_frame,
 
   idx = _vaddr_tab_index(vaddr, 2);
 
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, 2);
+  kernel_assert(idx < PAGE_TAB_ENTRY_COUNT);
+  entry = ptab + idx;
+
+  msg_len = 0;
+  msg_part = "Mapping (";
+  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (uptr_t)vaddr);
+  msg_part = ",";
+  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (uptr_t)paddr);
+  msg_part = "):";
+  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
+
+  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (uptr_t)ptab);
   msg_part = "=";
   msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, idx);
+
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
   log_info_len(msg, msg_len);
 
-  kernel_assert(idx < PAGE_TAB_ENTRY_COUNT);
-  entry = ptab + idx;
   kernel_assert(_page_tab_entry_is_inited(ptab, idx) == false);
   *(vptr_t *)entry = paddr;
   entry->present = 1;
