@@ -49,11 +49,29 @@ void log_info(const ch_t *str, usz_t len)
 
 void log_info_len(const ch_t *str, usz_t len)
 {
-  serial_write_str("[INF] ", 6);
+  //serial_write_str("[INF] ", 6);
   serial_write_str(str, len);
-  serial_write_str("\r\n", 2);
 }
 
-void log_info(const ch_t *str) {
+void log_info(const ch_t *str)
+{
   log_info_len(str, str_len(str));
+}
+
+void log_info_uint(u64_t uval)
+{
+  const usz_t _MSG_CAP = 64;
+  ch_t msg[_MSG_CAP];
+  usz_t msg_len = str_buf_marshal_uint(msg, 0, _MSG_CAP, uval);
+  log_info_len(msg, msg_len);
+}
+
+void log_info_ln_len(const ch_t *str, usz_t len)
+{
+  log_info_len(str, len);
+ serial_write_str("\r\n", 2);
+}
+
+void log_info_ln(const ch_t *str) {
+  log_info_ln_len(str, str_len(str));
 }

@@ -174,7 +174,7 @@ base_private void _early_map_add(page_tab_entry_t *p4, uptr_t *next_frame,
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, idx);
 
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_len(msg, msg_len);
+  log_info_ln_len(msg, msg_len);
 
   kernel_assert(_page_tab_entry_is_inited(ptab, idx) == false);
   *(vptr_t *)entry = paddr;
@@ -242,34 +242,13 @@ base_private void _early_tab_system_verify(page_tab_entry_t *p4, uptr_t target_e
 */
 
 base_private void _load_tab_system(page_tab_entry_t *p4) {
-  /*
-  kernel_assert(mm_align_check(p4, PAGE_SIZE_4K));
-  page_tab_entry_t *p3 = _entry_get_paddr(p4);
-  page_tab_entry_t *p2 = _entry_get_paddr(p3);
-  page_tab_entry_t *paddr = _entry_get_paddr(p2);
-  kernel_assert(mm_align_check(paddr, PAGE_SIZE_2M));
-  _early_tab_system_verify(p4, 
-      ((uptr_t )_phy_segs[_phy_segs_count - 1].base) + _phy_segs[_phy_segs_count - 1].len);
-
-  u64_t cr3 = cpu_read_cr3();
-  page_tab_entry_t *old_p4 = (page_tab_entry_t *)cr3;
-  kernel_assert(mm_align_check(old_p4, PAGE_SIZE_4K));
-  page_tab_entry_t *old_p3 = _entry_get_paddr(old_p4);
-  page_tab_entry_t *old_p2 = _entry_get_paddr(old_p3);
-  page_tab_entry_t *old_paddr = _entry_get_paddr(old_p2);
-  kernel_assert(mm_align_check(old_paddr, PAGE_SIZE_2M));
-  _early_tab_system_verify(old_p4, 1024 * 1024 * 1024);
-*/
-
   u64_t val;
   
-  log_info("_load_tab_system 1");
   kernel_assert(mm_align_check(p4, PAGE_SIZE_4K));
 
   val = (uptr_t)p4;
   val = val & 0x000ffffffffff000;
   cpu_write_cr3(val);
-  log_info("_load_tab_system 2");
 }
 
 void page_early_tab_load(uptr_t kernel_start, uptr_t kernel_end)
@@ -281,8 +260,6 @@ void page_early_tab_load(uptr_t kernel_start, uptr_t kernel_end)
   usz_t seg_size;
   uptr_t seg_end;
   uptr_t alloc_end;
-  
-  log_info("page_early_tab_load started");
 
   alloc_end = ((uptr_t )_phy_segs[_phy_segs_count - 1].base) + _phy_segs[_phy_segs_count - 1].len;
 
@@ -325,11 +302,7 @@ void page_early_tab_load(uptr_t kernel_start, uptr_t kernel_end)
   kernel_assert(selected < _phy_segs_count);
   kernel_assert(p4 != NULL);
 
-  log_info("page_early_tab_load 1");
-
   mm_clean(p4, PAGE_SIZE_4K);
-
-  log_info("page_early_tab_load 2");
 
   _early_tab_prepare(p4, seg_end - (uptr_t)p4, alloc_end);
 
@@ -350,9 +323,7 @@ void page_early_tab_load(uptr_t kernel_start, uptr_t kernel_end)
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)p4);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
   
-  log_info_len(msg, msg_len);
+  log_info_ln_len(msg, msg_len);
 
   _load_tab_system(p4);
-
-  log_info("page_early_tab_load 4");
 }

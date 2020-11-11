@@ -156,7 +156,7 @@ void kernal_main(u64_t addr)
 
   intr_init();
   serial_init();
-  log_info("kernel_prototype started..");
+  log_info_ln("kernel_prototype started..");
   time_init();
   keyboard_init();
   intr_irq_enable();
@@ -184,7 +184,7 @@ void kernal_main(u64_t addr)
   msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP]);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_len(msg, msg_len);
+  log_info_ln_len(msg, msg_len);
 
   mm_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
