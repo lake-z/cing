@@ -19,9 +19,9 @@ typedef struct sdt_header {
 base_private void _init_apic(sdt_header_t *sdt)
 {
   kernel_assert(mm_compare((byte_t *)(sdt->signature), (byte_t *)"APIC", 4) == 0);
-  log_info("APIC len: ");
+  log_info_str("APIC len: ");
   log_info_uint(sdt->len);
-  log_info_ln("");
+  log_info_str_line("");
 }
 
 base_private void _init_rsdt(byte_t *rsdt)
@@ -29,12 +29,12 @@ base_private void _init_rsdt(byte_t *rsdt)
   sdt_header_t *sdt = (sdt_header_t *)rsdt;
   usz_t entry_cnt = (sdt->len - sizeof(sdt_header_t)) / 4;
  
-  log_info_ln_len(sdt->signature, 4);
+  log_info_str_line_len(sdt->signature, 4);
 
   for (usz_t i = 0; i < entry_cnt; i++) {
     u32_t ptr32 = *(u32_t *)(rsdt + sizeof(sdt_header_t) + i * 4);
     sdt = (sdt_header_t *)(uptr_t)ptr32;
-    log_info_ln_len(sdt->signature, 4);
+    log_info_str_line_len(sdt->signature, 4);
     if(mm_compare((byte_t *)(sdt->signature), (byte_t *)"APIC", 4) == 0) {
       _init_apic(sdt);
     }
@@ -56,7 +56,7 @@ void acpi_init(const byte_t *multi_boot_info, usz_t len)
 
   /* Multi boot info is pointing to a RSDP (Root System Description Pointer) */
   signature = (const ch_t *)ptr;
-  log_info_ln_len(signature, 8);
+  log_info_str_line_len(signature, 8);
   ptr += 8;
 
   check_sum = *(const u8_t *)ptr;
@@ -71,7 +71,7 @@ void acpi_init(const byte_t *multi_boot_info, usz_t len)
   msg_len = 0;
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, revision);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_ln_len(msg, msg_len);
+  log_info_str_line_len(msg, msg_len);
 
   rsdt_addr = *(const u32_t *)ptr;
   ptr += 4;
@@ -80,13 +80,13 @@ void acpi_init(const byte_t *multi_boot_info, usz_t len)
   msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, rsdt_addr);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_ln_len(msg, msg_len);
+  log_info_str_line_len(msg, msg_len);
 
   msg_len = 0;
   msg_len += str_buf_marshal_uint(
       msg, msg_len, _MSG_CAP, ptr - (uptr_t)multi_boot_info);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_ln_len(msg, msg_len);
+  log_info_str_line_len(msg, msg_len);
 
   byte_sum = 0;
   for (const byte_t *byte = multi_boot_info; (uptr_t)byte < ptr; byte++) {

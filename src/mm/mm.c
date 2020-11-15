@@ -148,7 +148,7 @@ void mm_init(const byte_t *kernel_elf_info,
         msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, _kernel_end);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_ln_len(msg, msg_len);
+  log_info_str_line_len(msg, msg_len);
     
   page_early_tab_load(_kernel_start, _kernel_end);
 }

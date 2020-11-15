@@ -148,15 +148,30 @@ base_private void _boot_info_process(multi_boot_info_t *info, const byte_t *boot
   kernel_assert(((uptr_t)ptr - ((uptr_t)info->info)) == (info->total_size));
 }
 
+base_private base_no_return _kernel_halt(void)
+{
+  while (1) {
+    __asm__("hlt");
+  }
+}
+
 void kernal_main(u64_t addr)
 {
+  serial_init();
+
+  log_info_str_line("kernel_prototype started..");
+
+  _kernel_halt();
+
+
+  (void)(addr);
+  (void)(_boot_info_process);
+  /*
   screen_init();
 
   _boot_info_process(&_boot_info, (const byte_t *)addr);
 
   intr_init();
-  serial_init();
-  log_info_ln("kernel_prototype started..");
   time_init();
   keyboard_init();
   intr_irq_enable();
@@ -184,7 +199,7 @@ void kernal_main(u64_t addr)
   msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP]);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_ln_len(msg, msg_len);
+  log_info_str_line_len(msg, msg_len);
 
   mm_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
@@ -195,6 +210,7 @@ void kernal_main(u64_t addr)
   kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
   acpi_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ACPI_OLD], 
       _boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
+  */
 
   /* Some temp tests following ***********************************************/
 
@@ -205,10 +221,4 @@ void kernal_main(u64_t addr)
   str[1] = '\0';
   log_info(str, str_len(str));
   */
-
-  while (1) {
-    /* This allows the CPU to enter a sleep state in which it consumes much
-     * less energy. See: https://en.wikipedia.org/wiki/HLT_(x86_instruction) */
-    __asm__("hlt");
-  }
 }

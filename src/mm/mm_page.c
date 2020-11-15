@@ -174,7 +174,7 @@ base_private void _early_map_add(page_tab_entry_t *p4, uptr_t *next_frame,
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, idx);
 
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_ln_len(msg, msg_len);
+  log_info_str_line_len(msg, msg_len);
 
   kernel_assert(_page_tab_entry_is_inited(ptab, idx) == false);
   *(vptr_t *)entry = paddr;
@@ -323,7 +323,7 @@ void page_early_tab_load(uptr_t kernel_start, uptr_t kernel_end)
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)p4);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
   
-  log_info_ln_len(msg, msg_len);
+  log_info_str_line_len(msg, msg_len);
 
   _load_tab_system(p4);
 }
