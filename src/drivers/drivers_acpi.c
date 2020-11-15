@@ -1,3 +1,4 @@
+#include "mm.h"
 #include "drivers_acpi.h"
 #include "containers_string.h"
 #include "kernel_panic.h"
@@ -15,6 +16,14 @@ typedef struct sdt_header {
   u32_t creator_revision;
 } base_struct_packed sdt_header_t;
 
+base_private void _init_apic(sdt_header_t *sdt)
+{
+  kernel_assert(mm_compare((byte_t *)(sdt->signature), (byte_t *)"APIC", 4) == 0);
+  log_info("APIC len: ");
+  log_info_uint(sdt->len);
+  log_info_ln("");
+}
+
 base_private void _init_rsdt(byte_t *rsdt)
 {
   sdt_header_t *sdt = (sdt_header_t *)rsdt;
@@ -26,6 +35,9 @@ base_private void _init_rsdt(byte_t *rsdt)
     u32_t ptr32 = *(u32_t *)(rsdt + sizeof(sdt_header_t) + i * 4);
     sdt = (sdt_header_t *)(uptr_t)ptr32;
     log_info_ln_len(sdt->signature, 4);
+    if(mm_compare((byte_t *)(sdt->signature), (byte_t *)"APIC", 4) == 0) {
+      _init_apic(sdt);
+    }
   }
 }
 

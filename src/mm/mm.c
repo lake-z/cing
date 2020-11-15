@@ -49,6 +49,19 @@ void mm_clean(vptr_t mem, usz_t size)
   }
 }
 
+i64_t mm_compare(byte_t *mem1, byte_t *mem2, usz_t len)
+{
+  int cmp;
+  kernel_assert(len > 0);
+  for (usz_t i = 0; i < len; i++) {
+    cmp = mem1[i] - mem2[i];
+    if(cmp != 0) {
+      break;
+    }
+  }
+  return cmp;
+}
+
 vptr_t mm_align_up(vptr_t p, u64_t align)
 {
   uptr_t intp = (uptr_t)p;
