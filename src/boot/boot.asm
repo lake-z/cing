@@ -1,5 +1,3 @@
-; cf. https://intermezzos.github.io/book/hello-world.html
-
 global start	; exports a label (makes it public). As start will be the entry
 		; point of our kernel, it needs to be public.
 
@@ -204,14 +202,22 @@ stack_top:
 ; submode. To actually execute 64-bit code, we need to set up a new Global
 ; Descriptor Table.
 
-; The first entry of the GDT is a null segment selector(that is, a segment
-; selector with an index of 0 and the TI flag set to 0). The processor
-; generates an exception when a segment register holding a null selector is
-; used to access memory. The processor does not generate an exception when a
-; segment register (other than the CS or SS registers) is loaded with a null
-; selector. A null selector can be used to initialize unused segment registers. 
-; Loading the CS or SS register with a null segment selector causes a
-; general-protection exception (#GP) to be generated.
+; Setting up 3 segments here: the required NULL segment (the very first element 
+; in the GDT has to be an invalid "NULL" segment, to make a segment register
+; loaded with 0x0 invalid), a code segment, and a data segment
+
+; Most bits of segment descriptors are not used.
+
+; Only 1 bit of data segment is used:
+; Bit 15: P, the Present bit, should be set in order to use the segment.
+
+; Only 6 bits of code segment is used:
+; Bits 10: C (conforming bit)
+; Bits 13..14: The two DPL bits, to set protection ring
+; Bit 15: P, the Present bit, should be set in order to use the segment.
+; Bit 21: L, determines whether the code in this segment should be interpreted
+;   as 32-bit or 64-bit code; set it as we'd like 64-bit code.
+; Bit 22: D, should be clear for 64-bit code.
 
 section .rodata
 gdt64:
