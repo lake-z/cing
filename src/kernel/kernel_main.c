@@ -47,7 +47,7 @@ void process_boot_info_str(
   (*row_no) += 1;
 }
 
-base_private const byte_t *_boot_info_process_tag(
+base_private const byte_t *_multi_boot_info_save_tag(
     multi_boot_info_t *info, const byte_t *ptr, u32_t type, u32_t size)
 {
   base_private const usz_t _MSG_LEN = 128;
@@ -95,7 +95,7 @@ base_private const byte_t *_boot_info_process_tag(
   return ptr + size - 8; /* 8 bytes of header is already passed */
 }
 
-base_private const byte_t *_boot_info_process_tag_header(
+base_private const byte_t *_multi_boot_info_process_tag_header(
     const byte_t *ptr, u32_t *type, u32_t *size)
 {
   kernel_assert((((uptr_t)ptr) % 8) == 0);
@@ -109,7 +109,7 @@ base_private const byte_t *_boot_info_process_tag_header(
 }
 
 /* multi_boot_info_t must be initialized before calling this function */
-base_private void _boot_info_process(multi_boot_info_t *info, const byte_t *boot)
+base_private void _multi_boot_info_save(multi_boot_info_t *info, const byte_t *boot)
 {
   /* Multiboot 2 boot information is defined by specification:
    * https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html
@@ -135,11 +135,11 @@ base_private void _boot_info_process(multi_boot_info_t *info, const byte_t *boot
   ptr = info->info + 8;
 
   while (((uptr_t)ptr - ((uptr_t)info->info)) < (info->total_size)) {
-    ptr = _boot_info_process_tag_header(ptr, &type, &size);
+    ptr = _multi_boot_info_process_tag_header(ptr, &type, &size);
     if (type == 0) {
       break;
     } else {
-      ptr = _boot_info_process_tag(&_boot_info, ptr, type, size);
+      ptr = _multi_boot_info_save_tag(&_boot_info, ptr, type, size);
     }
 
     ptr = (const byte_t *)mm_align_up((vptr_t)ptr, 8);
@@ -155,7 +155,7 @@ base_private base_no_return _kernel_halt(void)
   }
 }
 
-void kernal_main(u64_t addr)
+void kernal_main(uptr_t multi_boot_info)
 {
   serial_init();
 
@@ -163,13 +163,11 @@ void kernal_main(u64_t addr)
 
   _kernel_halt();
 
+  _multi_boot_info_save(&_boot_info, (const byte_t *)multi_boot_info);
 
-  (void)(addr);
-  (void)(_boot_info_process);
   /*
   screen_init();
 
-  _boot_info_process(&_boot_info, (const byte_t *)addr);
 
   intr_init();
   time_init();
