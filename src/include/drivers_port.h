@@ -1,5 +1,5 @@
-#ifndef ___KERNEL_PORT
-#define ___KERNEL_PORT
+#ifndef ___DRIVERS_PORT
+#define ___DRIVERS_PORT
 
 #include "base.h"
 

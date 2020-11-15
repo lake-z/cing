@@ -1,4 +1,4 @@
-#include "kernel_port.h"
+#include "drivers_port.h"
 
 void port_write_byte(port_no_t port, byte_t data)
 {

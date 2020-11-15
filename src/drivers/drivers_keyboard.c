@@ -3,7 +3,7 @@
 #include "drivers_screen.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
-#include "kernel_port.h"
+#include "drivers_port.h"
 
 typedef enum {
   KEYBOARD_CMD_DISABLE_SCAN = 0xad,

@@ -2,7 +2,7 @@
 #include "containers_string.h"
 #include "drivers_screen.h"
 #include "kernel_panic.h"
-#include "kernel_port.h"
+#include "drivers_port.h"
 
 /* Forwarded declarations */
 typedef enum { IDT_GATE_TYPE_INTERRUPT, IDT_GATE_TYPE_TRAP } idt_gate_type_t;
