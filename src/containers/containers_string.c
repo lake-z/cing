@@ -142,5 +142,5 @@ byte_t byte_get(u64_t ival, usz_t byte)
   kernel_assert(byte < 4);
   u64_t v64 = (ival >> (u64_t)(8 * byte)) & u64_literal(0xff);
   kernel_assert(v64 <= U8_MAX);
-  return (byte_t) v64;
+  return (byte_t)v64;
 }
