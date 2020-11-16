@@ -1,6 +1,5 @@
 #include "kernel_main.h"
 #include "containers_string.h"
-#include "drivers_acpi.h"
 #include "drivers_keyboard.h"
 #include "drivers_screen.h"
 #include "drivers_time.h"
