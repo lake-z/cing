@@ -3,11 +3,8 @@
 #include "log.h"
 #include "mm_private.h"
 
-base_private uptr_t _kernel_start;
-base_private uptr_t _kernel_end;
-
 /* @see
- * https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#Section_header  
+ * https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#Section_header
  */
 typedef struct multiboot_elf_sections_entry {
   uint32_t name;
@@ -28,6 +25,9 @@ typedef struct multiboot_tag_elf_sections {
   uint32_t shndx;
   multiboot_elf_sections_entry_t sections[];
 } base_struct_packed multiboot_tag_elf_sections_t;
+
+base_private uptr_t _kernel_start;
+base_private uptr_t _kernel_end;
 
 base_private inline bo_t _math_is_pow2(u64_t n)
 {
@@ -77,22 +77,15 @@ bo_t mm_align_check(vptr_t p, u64_t align)
   return ((uptr_t)p) % align == 0;
 }
 
-void mm_init(const byte_t *kernel_elf_info,
-    usz_t elf_info_len base_may_unuse,
-    const byte_t *mmap_info,
-    usz_t mmap_info_len)
+base_private void _init_kernel_elf_symbols(
+    const byte_t *kernel_elf_info,
+    usz_t elf_info_len base_may_unuse
+)
 {
-  base_private const usz_t _MSG_CAP = 80;
-  ch_t msg[_MSG_CAP];
-  usz_t msg_len;
-  const ch_t *msg_part;
-
   multiboot_tag_elf_sections_t *secs;
   multiboot_elf_sections_entry_t *entry;
   usz_t sec_cnt;
   usz_t sec_size;
-
-  mm_page_init_mmap_info(mmap_info, mmap_info_len);
 
   secs = (multiboot_tag_elf_sections_t *)kernel_elf_info;
   sec_cnt = secs->num;
@@ -104,7 +97,6 @@ void mm_init(const byte_t *kernel_elf_info,
   for (usz_t i = 0; i < sec_cnt; i++) {
     entry = (multiboot_elf_sections_entry_t *)(((uptr_t)secs->sections) +
                                                i * sec_size);
-
     if (entry->type != 0) {
       if (entry->addr < _kernel_start) {
         _kernel_start = entry->addr;
@@ -113,42 +105,31 @@ void mm_init(const byte_t *kernel_elf_info,
         _kernel_end = entry->size + entry->addr;
       }
     }
-
-    msg_len = 0;
-    msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, i);
-    msg_part = ": addr=";
-    msg_len += str_buf_marshal_str(
-        msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-    msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, entry->addr);
-    msg_part = ", type=";
-    msg_len += str_buf_marshal_str(
-        msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-    msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, entry->type);
-    msg_part = ", size=";
-    msg_len += str_buf_marshal_str(
-        msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-    msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, entry->size);
-    str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
   }
 
   /* Kernel image is impossible to be that large */
   kernel_assert((_kernel_end - _kernel_start) < 1024 * 1024 * 1024);
-  /* Verify this function must be with in kernel image */
-  kernel_assert((uptr_t)mm_init < _kernel_end);
-  kernel_assert((uptr_t)mm_init > _kernel_start);
-  kernel_assert(mm_page_phy_addr_range_valid(_kernel_start, _kernel_end));
 
-  msg_len = 0;
-  msg_part = "kernel start =";
-  msg_len += str_buf_marshal_str(
-        msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, _kernel_start);
-  msg_part = ", end =";
-  msg_len += str_buf_marshal_str(
-        msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, _kernel_end);
-  msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_str_line_len(msg, msg_len);
-    
-  page_early_tab_load(_kernel_start, _kernel_end);
+  /* Verify this function must be with in kernel image */
+  kernel_assert((uptr_t)mm_early_init < _kernel_end);
+  kernel_assert((uptr_t)mm_early_init > _kernel_start);
+  kernel_assert(mm_phy_addr_range_valid(_kernel_start, _kernel_end));
+
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "kernel start: ");
+  log_uint_of_size(LOG_LEVEL_INFO, _kernel_start);
+  log_str(LOG_LEVEL_INFO, ", end:  ");
+  log_uint_of_size(LOG_LEVEL_INFO, _kernel_end);
+  log_line_end(LOG_LEVEL_INFO);
+}
+
+void mm_early_init(
+    const byte_t *kernel_elf_info,
+    usz_t elf_info_len base_may_unuse,
+    const byte_t *mmap_info,
+    usz_t mmap_info_len)
+{
+  mm_frame_init(mmap_info, mmap_info_len);
+  _init_kernel_elf_symbols(kernel_elf_info, elf_info_len);
+  // page_early_tab_load(_kernel_start, _kernel_end);
 }

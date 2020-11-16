@@ -12,12 +12,10 @@
 #include "mm.h"
 #include "panel.h"
 
-typedef enum {
-  MULTI_BOOT_TAG_TYPE_MMAP = 6,
-  MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS = 9,
-  MULTI_BOOT_TAG_TYPE_ACPI_OLD = 14,
-  MULTI_BOOT_TAG_TYPE_ACPI_NEW = 15,
-} multi_boot_tag_type_t;
+#define _MULTI_BOOT_TAG_TYPE_MMAP 6
+#define _MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS 9
+#define _MULTI_BOOT_TAG_TYPE_ACPI_OLD 14
+#define _MULTI_BOOT_TAG_TYPE_ACPI_NEW 15
 
 #define MULTI_BOOT_INFO_SLOT_COUNT 128
 #define MULTI_BOOT_INFO_CAP (1024 * 1024)
@@ -64,17 +62,17 @@ base_private const byte_t *_multi_boot_info_save_tag(
     break;
   case 5: /* BIOS boot device */
     break;
-  case 6:
+  case _MULTI_BOOT_TAG_TYPE_MMAP:
     /*process_boot_info_mem_map(ptr, size, row_no);*/
     break;
   case 8: /* Frame buffer information */
     break;
-  case 9: /* ELF symbols */
+  case _MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS: /* ELF symbols */
     break;
   case 10: /* Advanced power management */
     break;
-  case 14: /* ACPI old RSDP */
-  case 15: /* ACPI new RSDP */
+  case _MULTI_BOOT_TAG_TYPE_ACPI_OLD: /* ACPI old RSDP */
+  case _MULTI_BOOT_TAG_TYPE_ACPI_NEW: /* ACPI new RSDP */
     break;
   default:
     msg_part = (ch_t *)"Invalid multiboot info tag type: ";
@@ -159,14 +157,27 @@ void kernal_main(uptr_t multi_boot_info)
 {
   serial_init();
 
-  log_info_str_line("kernel_prototype started..");
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "kernel_prototype started..");
+  log_line_end(LOG_LEVEL_INFO);
 
-  _kernel_halt();
+  screen_init();
 
   _multi_boot_info_save(&_boot_info, (const byte_t *)multi_boot_info);
 
+  kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != NULL);
+  kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
+  kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP] != NULL);
+  kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP] != 0);
+  mm_early_init(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
+      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
+      _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
+      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
+
+  _kernel_halt();
+
+
   /*
-  screen_init();
 
 
   intr_init();
@@ -175,11 +186,6 @@ void kernal_main(uptr_t multi_boot_info)
   intr_irq_enable();
 
   panel_start();
-
-  kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != NULL);
-  kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
-  kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP] != NULL);
-  kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_MMAP] != 0);
 
   base_private const usz_t _MSG_CAP = 80;
   ch_t msg[_MSG_CAP];
@@ -198,11 +204,6 @@ void kernal_main(uptr_t multi_boot_info)
   msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP]);
   msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
   log_info_str_line_len(msg, msg_len);
-
-  mm_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
-      _boot_info.lens[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
-      _boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP],
-      _boot_info.lens[MULTI_BOOT_TAG_TYPE_MMAP]);
 
   kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
   kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
