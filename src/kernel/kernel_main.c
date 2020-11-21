@@ -1,5 +1,6 @@
 #include "kernel_main.h"
 #include "containers_string.h"
+#include "drivers_acpi.h"
 #include "drivers_keyboard.h"
 #include "drivers_screen.h"
 #include "drivers_time.h"
@@ -155,6 +156,9 @@ void kernal_main(uptr_t multi_boot_info)
       _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
 
+  acpi_init(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD], 
+      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
+ 
   _kernel_halt();
 
 
@@ -188,9 +192,7 @@ void kernal_main(uptr_t multi_boot_info)
 
   kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
   kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
-  acpi_init(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ACPI_OLD], 
-      _boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
-  */
+ */
 
   /* Some temp tests following ***********************************************/
 
