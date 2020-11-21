@@ -1,6 +1,5 @@
 #include "kernel_panic.h"
 #include "drivers_screen.h"
-#include <stdlib.h>
 
 base_private void _unsigned_to_str(usz_t uval, char *buf, usz_t buf_cap)
 {

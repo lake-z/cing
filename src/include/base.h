@@ -69,6 +69,7 @@ typedef uintptr_t uptr_t;
 #define base_no_null __attribute__((nonnull))
 #define base_private static
 #define base_struct_packed __attribute__((packed))
+#define base_align(unit) __attribute__((aligned(unit)))
 
 base_no_return _dbg_assert_failed(
     const ch_t *expr, const ch_t *file, u32_t line_no);

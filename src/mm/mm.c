@@ -62,17 +62,27 @@ i64_t mm_compare(byte_t *mem1, byte_t *mem2, usz_t len)
   return cmp;
 }
 
-vptr_t mm_align_up(vptr_t p, u64_t align)
+uptr_t mm_align_up(uptr_t p, u64_t align)
 {
   uptr_t intp = (uptr_t)p;
   u64_t a = align - 1;
   kernel_assert(align > 0);
   kernel_assert(_math_is_pow2(align));
   intp = ((intp + a) & ~a);
-  return (vptr_t)intp;
+  return intp;
 }
 
-bo_t mm_align_check(vptr_t p, u64_t align)
+uptr_t mm_align_down(uptr_t p, u64_t align)
+{
+  uptr_t intp = (uptr_t)p;
+  u64_t a = align - 1;
+  kernel_assert(align > 0);
+  kernel_assert(_math_is_pow2(align));
+  intp = intp & ~a;
+  return intp;
+}
+
+bo_t mm_align_check(uptr_t p, u64_t align)
 {
   return ((uptr_t)p) % align == 0;
 }
@@ -113,7 +123,7 @@ base_private void _init_kernel_elf_symbols(
   /* Verify this function must be with in kernel image */
   kernel_assert((uptr_t)mm_early_init < _kernel_end);
   kernel_assert((uptr_t)mm_early_init > _kernel_start);
-  kernel_assert(mm_phy_addr_range_valid(_kernel_start, _kernel_end));
+  kernel_assert(padd_range_valid(_kernel_start, _kernel_end));
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "kernel start: ");
@@ -129,7 +139,7 @@ void mm_early_init(
     const byte_t *mmap_info,
     usz_t mmap_info_len)
 {
-  mm_frame_init(mmap_info, mmap_info_len);
+  mm_frame_early_init(mmap_info, mmap_info_len);
   _init_kernel_elf_symbols(kernel_elf_info, elf_info_len);
-  // page_early_tab_load(_kernel_start, _kernel_end);
+  mm_page_early_init(_kernel_start, _kernel_end, padd_start(), padd_end());
 }

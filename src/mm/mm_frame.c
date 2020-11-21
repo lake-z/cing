@@ -3,9 +3,15 @@
 #include "mm_private.h"
 
 typedef struct {
-  vptr_t base;
+  uptr_t base;
   usz_t len;
 } phy_mem_section_t;
+
+typedef enum {
+  FRAME_SIZE_4K = 4 * 1024,
+  FRAME_SIZE_2M = 2 * 1024 * 1024,
+  FRAME_SIZE_1G = 1024 * 1024 * 1024,
+} frame_size_t;
 
 /* Max number of physical memory sections allowed */
 #define _PHY_MEM_SECTION_MAX 1024
@@ -14,6 +20,11 @@ base_private usz_t _phy_mem_sec_count;
 
 /* Total size of physical memory */
 base_private usz_t _phy_mem_size;
+
+#define _EARLY_FRAME_COUNT 16 * 1024
+byte_t _early_frame_pool[_EARLY_FRAME_COUNT * FRAME_SIZE_4K] base_align(4096);
+base_private usz_t _early_frame_count;
+base_private bo_t _is_early_stage;
 
 base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
 {
@@ -42,13 +53,10 @@ base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
 
     base = *(u64_t *)ptr;
     ptr += 8;
-
     len = *(u64_t *)ptr;
     ptr += 8;
-
     type = *(u32_t *)ptr;
     ptr += 4;
-
     reserve = *(u32_t *)ptr;
     base_mark_unuse(reserve); /* Do not guranteed to be 0 on real hardware */
     ptr += 4;
@@ -56,8 +64,13 @@ base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
     /* Ignores memory below 1MB */
     if (type == 1 && (base >= 1024 * 1024)) {
       kernel_assert(_phy_mem_sec_count < _PHY_MEM_SECTION_MAX);
-      _phy_mem_secs[_phy_mem_sec_count].base = (vptr_t)base;
+      _phy_mem_secs[_phy_mem_sec_count].base = (uptr_t)base;
       _phy_mem_secs[_phy_mem_sec_count].len = len;
+      if (_phy_mem_sec_count > 0) {
+        uptr_t last_end  = _phy_mem_secs[_phy_mem_sec_count - 1].base;
+        last_end += _phy_mem_secs[_phy_mem_sec_count - 1].len;
+        kernel_assert(_phy_mem_secs[_phy_mem_sec_count].base > last_end);
+      }
       _phy_mem_sec_count++;
       _phy_mem_size += len;
     }
@@ -69,12 +82,51 @@ base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
   log_line_end(LOG_LEVEL_INFO);
 }
 
-void mm_frame_init(const byte_t *mmap_info, usz_t mmap_info_len)
+void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len)
 {
+  _early_frame_count = 0;
   _init_mmap_info(mmap_info, mmap_info_len);
+
+  _is_early_stage = true;
 }
 
-bo_t mm_phy_addr_range_valid(uptr_t start, uptr_t end)
+base_private base_must_check bo_t _get_early(byte_t **out_frame)
+{
+  bo_t ok;
+  if (_early_frame_count < _EARLY_FRAME_COUNT) {
+    (*out_frame) = _early_frame_pool + _early_frame_count * FRAME_SIZE_4K;
+    _early_frame_count++;
+    ok = true;
+  } else {
+    ok = false;
+  }
+  return ok;
+}
+
+bo_t mm_frame_get(byte_t **out_frame)
+{
+  if (base_unlikely(_is_early_stage)) {
+    return _get_early(out_frame);
+  } else {
+    kernel_panic("TODO");
+  }
+}
+
+uptr_t padd_start(void)
+{
+  kernel_assert(_phy_mem_sec_count > 0);
+  return _phy_mem_secs[0].base;
+}
+
+uptr_t padd_end(void)
+{
+  kernel_assert(_phy_mem_sec_count > 0);
+  uptr_t mem = _phy_mem_secs[_phy_mem_sec_count - 1].base;
+  mem += _phy_mem_secs[_phy_mem_sec_count - 1].len;
+  return mem;
+}
+
+bo_t padd_range_valid(uptr_t start, uptr_t end)
 {
   bo_t found = false;
   for (usz_t i = 0; i < _phy_mem_sec_count; i++) {

@@ -2,12 +2,15 @@
 #define ___MM_PRIVATE
 
 #include "mm.h"
-#include "mm_page.h"
 
-void mm_frame_init(const byte_t *mmap_info, usz_t mmap_info_len);
-bo_t mm_phy_addr_range_valid(uptr_t start, uptr_t end);
+void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end, 
+    uptr_t phy_start, uptr_t phy_end);
 
-void mm_page_init_mmap_info(const byte_t *ptr, usz_t size);
-void page_early_tab_load(uptr_t kernel_start, uptr_t kernel_end);
+void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len);
+bo_t mm_frame_get(byte_t **out_frame) base_must_check;
+
+bo_t padd_range_valid(uptr_t start, uptr_t end);
+uptr_t padd_start(void);
+uptr_t padd_end(void);
 
 #endif

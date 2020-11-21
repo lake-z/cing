@@ -27,23 +27,6 @@ typedef struct {
 
 base_private multi_boot_info_t _boot_info;
 
-/* Forwarded declarations */
-void process_boot_info_str(
-    const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no) base_no_null;
-void process_boot_info_mem_map(
-    const byte_t *ptr, usz_t size base_may_unuse, usz_t *row_no);
-
-void process_boot_info_str(
-    const byte_t *addr, usz_t size base_may_unuse, usz_t *row_no)
-{
-  usz_t len = str_len((const ch_t *)addr);
-
-  kernel_assert((len + 1 + 8) == size);
-  screen_write_str(
-      (const ch_t *)addr, SCREEN_COLOR_WHITE, SCREEN_COLOR_BLACK, *row_no, 0);
-  (*row_no) += 1;
-}
-
 base_private const byte_t *_multi_boot_info_save_tag(
     multi_boot_info_t *info, const byte_t *ptr, u32_t type, u32_t size)
 {
@@ -62,7 +45,6 @@ base_private const byte_t *_multi_boot_info_save_tag(
   case 5: /* BIOS boot device */
     break;
   case _MULTI_BOOT_TAG_TYPE_MMAP:
-    /*process_boot_info_mem_map(ptr, size, row_no);*/
     break;
   case 8: /* Frame buffer information */
     break;
@@ -139,7 +121,7 @@ base_private void _multi_boot_info_save(multi_boot_info_t *info, const byte_t *b
       ptr = _multi_boot_info_save_tag(&_boot_info, ptr, type, size);
     }
 
-    ptr = (const byte_t *)mm_align_up((vptr_t)ptr, 8);
+    ptr = (const byte_t *)mm_align_up((uptr_t)ptr, 8);
   }
 
   kernel_assert(((uptr_t)ptr - ((uptr_t)info->info)) == (info->total_size));
