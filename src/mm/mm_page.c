@@ -45,18 +45,16 @@ base_private const u64_t _TAB_ENTRY_LEN = 8;
 #define _TAB_ENTRY_COUNT 512
 base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
 
-/*
 base_private vptr_t _sec_access_vadd;
-base_private tab_entry_t _tmp_iden_tab_3[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
-base_private tab_entry_t _tmp_iden_tab_2[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
-base_private tab_entry_t _tmp_iden_tab_1[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
-base_private tab_entry_t *_tmp_iden_tab_entry;
-*/
+base_private tab_entry_t _sec_access_tab_3[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
+base_private tab_entry_t _sec_access_tab_2[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
+base_private tab_entry_t _sec_access_tab_1[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
+base_private tab_entry_t *_sec_access_tab_entry;
 
-/* Virtual address layout 
+/* Virtual address layout
  * --------
  * [*] kernel_start .. kernel_end is a direct mapping
- * [*] First page after VADD_48_HIGH_START is a temp mapping to handle cases 
+ * [*] First page after VADD_48_HIGH_START is a temp mapping to handle cases
  *     such as double page fault.
  */
 base_private const uptr_t VADD_LOW_START = u64_literal(0);
@@ -106,7 +104,8 @@ base_private tab_entry_t *_tab_entry_get_padd(tab_entry_t *ent)
   return (tab_entry_t *)result;
 }
 
-base_private void _tab_entry_init(tab_entry_t *e,
+base_private void _tab_entry_init(
+    tab_entry_t *e,
     tab_level_t level,
     bo_t present,
     bo_t write,
@@ -143,19 +142,30 @@ base_private void _tab_entry_init(tab_entry_t *e,
   }
 }
 
-base_private base_must_check bo_t _map_early(vptr_t va, vptr_t pa)
+base_private bo_t _map(vptr_t va, vptr_t pa, page_size_t size)
 {
   tab_entry_t *tab;
   tab_entry_index_t entry_idx;
   tab_entry_t *entry;
   byte_t *frame;
+  tab_level_t lv;
+  tab_level_t lowest_lv;
   bo_t ok;
 
-  kernel_assert(mm_align_check((uptr_t)va, PAGE_SIZE_2M));
-  kernel_assert(mm_align_check((uptr_t)pa, PAGE_SIZE_2M));
+  if (size == PAGE_SIZE_4K) {
+    lowest_lv = TAB_LEVEL_1;
+  } else if (size == PAGE_SIZE_2M) {
+    lowest_lv = TAB_LEVEL_2;
+  } else {
+     /* We currently only supports 2M page size in early stage, and 4K sized 
+      * pages after early stage. */
+     kernel_panic("Invalid memory page size");
+  }
+  kernel_assert(mm_align_check((uptr_t)va, size));
+  kernel_assert(mm_align_check((uptr_t)pa, size));
 
   tab = _tab_4;
-  for (tab_level_t lv = TAB_LEVEL_4; lv > TAB_LEVEL_2; lv--) {
+  for (lv = TAB_LEVEL_4; lv > lowest_lv; lv--) {
     entry_idx = _vadd_tab_index(va, lv);
     entry = &(tab[entry_idx]);
 
@@ -164,8 +174,8 @@ base_private base_must_check bo_t _map_early(vptr_t va, vptr_t pa)
 
       frame = NULL;
       ok = mm_frame_get(&frame);
-
       if (ok) {
+        kernel_assert(frame != NULL);
         _tab_zero((tab_entry_t *)frame);
         _tab_entry_init(entry, lv, true, true, (uptr_t)frame, PAGE_SIZE_4K);
       } else {
@@ -177,11 +187,17 @@ base_private base_must_check bo_t _map_early(vptr_t va, vptr_t pa)
   }
 
   if (ok) {
-    entry_idx = _vadd_tab_index(va, TAB_LEVEL_2);
+    if (size == PAGE_SIZE_4K) {
+      kernel_assert(lv == TAB_LEVEL_1);
+    } else if (PAGE_SIZE_2M) {
+      kernel_assert(lv == TAB_LEVEL_2);
+    } else {
+      kernel_panic("Invalid memory page size");
+    }
+
+    entry_idx = _vadd_tab_index(va, lv);
     entry = &(tab[entry_idx]);
-    kernel_assert(!_tab_entry_is_present(entry));
-    kernel_assert(_tab_entry_is_zero(entry));
-    _tab_entry_init(entry, TAB_LEVEL_2, true, true, (uptr_t)pa, PAGE_SIZE_2M);
+    _tab_entry_init(entry, lv, true, true, (uptr_t)pa, size);
   }
 
   return ok;
@@ -205,7 +221,7 @@ void mm_page_early_init(
   _tab_zero(_tab_4);
 
   for (va = map_start; (va + PAGE_SIZE_2M) < map_end; va += PAGE_SIZE_2M) {
-    ok = _map_early((vptr_t)va, (vptr_t)va);
+    ok = _map((vptr_t)va, (vptr_t)va, PAGE_SIZE_2M);
     if (!ok)
       break;
   }
@@ -214,33 +230,42 @@ void mm_page_early_init(
   _tab_root_load(_tab_4);
 }
 
-/*
-base_private void _init_tmp_iden()
+base_private void _init_sec_access_path(void)
 {
-  tab_entry_index_t en_idx;// = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_4);
-  tab_entry_t *en;// = &_tab_4[en_idx];
+  tab_entry_index_t en_idx;
+  tab_entry_t *en;
 
-  _tab_zero(_tmp_iden_tab_3);
-  _tab_entry_init(en, TAB_LEVEL_4, true, true, _tmp_iden_tab_3, PAGE_SIZE_4K);
+  _sec_access_vadd = (vptr_t)VADD_48_HIGH_START;
 
-  _tab_zero(_tmp_iden_tab_2);
-  en_idx = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_3);
-  en = &_tmp_iden_tab_3[en_idx];
-  _tab_entry_init(en, TAB_LEVEL_3, true, true, _tmp_iden_tab_2, PAGE_SIZE_4K);
+  en_idx = _vadd_tab_index(_sec_access_vadd, TAB_LEVEL_4);
+  en = &_tab_4[en_idx];
+  kernel_assert(!_tab_entry_is_present(en));
+  kernel_assert(_tab_entry_is_zero(en));
+  _tab_entry_init(en, TAB_LEVEL_4, true, true, (uptr_t)_sec_access_tab_3, PAGE_SIZE_4K);
 
-  _tab_zero(_tmp_iden_tab_1);
-  en_idx = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_2);
-  en = &_tmp_iden_tab_2[en_idx];
-  _tab_entry_init(en, TAB_LEVEL_2, true, true, _tmp_iden_tab_1, PAGE_SIZE_4K);
+  _tab_zero(_sec_access_tab_3);
+  en_idx = _vadd_tab_index(_sec_access_vadd, TAB_LEVEL_3);
+  en = &_sec_access_tab_3[en_idx];
+  _tab_entry_init(en, TAB_LEVEL_3, true, true, (uptr_t)_sec_access_tab_2, PAGE_SIZE_4K);
 
-  en_idx = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_1);
-  _tmp_iden_tab_entry = &_tmp_iden_tab_1[en_idx];
+  _tab_zero(_sec_access_tab_2);
+  en_idx = _vadd_tab_index(_sec_access_vadd, TAB_LEVEL_2);
+  en = &_sec_access_tab_2[en_idx];
+  _tab_entry_init(en, TAB_LEVEL_2, true, true, (uptr_t)_sec_access_tab_1, PAGE_SIZE_4K);
+
+  _tab_zero(_sec_access_tab_1);
+  en_idx = _vadd_tab_index(_sec_access_vadd, TAB_LEVEL_1);
+  _sec_access_tab_entry = &_sec_access_tab_1[en_idx];
 }
-*/
 
-/*
+void mm_page_sec_access_setup(vptr_t padd)
+{
+  kernel_assert(mm_align_check((uptr_t)padd, PAGE_SIZE_4K));
+  _tab_entry_init(_sec_access_tab_entry, TAB_LEVEL_1, true, true, (uptr_t)padd, PAGE_SIZE_4K);
+}
+
 void mm_page_init(uptr_t kernel_start, uptr_t kernel_end)
 {
-  kernel_panic("TODO");
+  _init_sec_access_path();
+  (void)(kernel_start + kernel_end);
 }
-*/

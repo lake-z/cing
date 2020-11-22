@@ -5,6 +5,9 @@
 
 void mm_page_early_init(
     uptr_t kernel_start, uptr_t kernel_end, uptr_t phy_start, uptr_t phy_end);
+void mm_page_init(uptr_t kernel_start, uptr_t kernel_end);
+
+void mm_page_sec_access_setup(vptr_t padd);
 
 void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len);
 void mm_frame_init(u64_t kernel_end);

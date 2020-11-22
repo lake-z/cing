@@ -148,6 +148,12 @@ bo_t mm_frame_get(byte_t **out_frame)
     if (_free_head == NULL) {
       ok = false;
     } else {
+      kernel_assert(mm_align_check((uptr_t)_free_head, FRAME_SIZE_4K));
+
+      /* Free frame may not be vitual address accessable, set up a safe mapping
+       * from virtual address to physical address */
+      mm_page_sec_access_setup(_free_head);
+
       (*out_frame) = (byte_t *)_free_head;
       _free_head = _free_head->next;
       _free_count--;

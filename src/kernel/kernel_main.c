@@ -164,46 +164,9 @@ void kernal_main(uptr_t multi_boot_info)
 
   mm_init();
 
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "kernel_prototype ended.");
+  log_line_end(LOG_LEVEL_INFO);
+
   _kernel_halt();
-
-  /*
-
-
-  time_init();
-  keyboard_init();
-  intr_irq_enable();
-
-  panel_start();
-
-  base_private const usz_t _MSG_CAP = 80;
-  ch_t msg[_MSG_CAP];
-  usz_t msg_len;
-  const ch_t *msg_part;
-
-  msg_len = 0;
-  msg_part = "boot info: ";
-  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)addr);
-  msg_part = ", elf symbols: ";
-  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS]);
-  msg_part = ", mmap: ";
-  msg_len += str_buf_marshal_str(msg, msg_len, _MSG_CAP, msg_part, str_len(msg_part));
-  msg_len += str_buf_marshal_uint(msg, msg_len, _MSG_CAP, (u64_t)_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_MMAP]);
-  msg_len += str_buf_marshal_terminator(msg, msg_len, _MSG_CAP);
-  log_info_str_line_len(msg, msg_len);
-
-  kernel_assert(_boot_info.ptrs[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
-  kernel_assert(_boot_info.lens[MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
- */
-
-  /* Some temp tests following ***********************************************/
-
-  /* Test able to acess pointer NULL, this behaviour may be protected by a 
-   * guard page 
-  ch_t *str = NULL;
-  str[0] = 'A';
-  str[1] = '\0';
-  log_info(str, str_len(str));
-  */
 }

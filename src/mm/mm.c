@@ -144,4 +144,5 @@ void mm_early_init(const byte_t *kernel_elf_info,
 void mm_init(void)
 {
   mm_frame_init(_kernel_end);
+  mm_page_init(_kernel_start, _kernel_end);
 }
