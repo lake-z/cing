@@ -2,12 +2,12 @@
 #include "containers_string.h"
 #include "drivers_acpi.h"
 #include "drivers_keyboard.h"
+#include "drivers_port.h"
 #include "drivers_screen.h"
-#include "drivers_time.h"
 #include "drivers_serial.h"
+#include "drivers_time.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
-#include "drivers_port.h"
 #include "log.h"
 #include "mm.h"
 #include "panel.h"
@@ -89,7 +89,8 @@ base_private const byte_t *_multi_boot_info_process_tag_header(
 }
 
 /* multi_boot_info_t must be initialized before calling this function */
-base_private void _multi_boot_info_save(multi_boot_info_t *info, const byte_t *boot)
+base_private void _multi_boot_info_save(
+    multi_boot_info_t *info, const byte_t *boot)
 {
   /* Multiboot 2 boot information is defined by specification:
    * https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html
@@ -156,15 +157,14 @@ void kernal_main(uptr_t multi_boot_info)
       _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
 
-  acpi_init(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD], 
+  acpi_init(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
- 
+
   intr_init();
 
   mm_init();
 
   _kernel_halt();
-
 
   /*
 

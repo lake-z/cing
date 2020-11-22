@@ -1,7 +1,7 @@
+#include "cpu.h"
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm_private.h"
-#include "cpu.h"
 
 #define _PAGE_SIZE_4K 4096
 
@@ -78,9 +78,10 @@ base_private void _tab_zero(tab_entry_t *entry)
   mm_clean(entry, sizeof(_TAB_ENTRY_LEN * _TAB_ENTRY_COUNT));
 }
 
-base_private void _tab_root_load(tab_entry_t *p4) {
+base_private void _tab_root_load(tab_entry_t *p4)
+{
   u64_t val;
-  
+
   kernel_assert(mm_align_check((uptr_t)p4, PAGE_SIZE_4K));
 
   val = (uptr_t)p4;
@@ -105,32 +106,36 @@ base_private tab_entry_t *_tab_entry_get_padd(tab_entry_t *ent)
   return (tab_entry_t *)result;
 }
 
-base_private void _tab_entry_init(tab_entry_t *e, tab_level_t level, 
-  bo_t present, bo_t write, uptr_t padd, page_size_t padd_size)
+base_private void _tab_entry_init(tab_entry_t *e,
+    tab_level_t level,
+    bo_t present,
+    bo_t write,
+    uptr_t padd,
+    page_size_t padd_size)
 {
   switch (level) {
-    case TAB_LEVEL_4:
-    case TAB_LEVEL_1:
-      kernel_assert(padd_size == PAGE_SIZE_4K);
-      break;
-    case TAB_LEVEL_2:
-      kernel_assert(padd_size == PAGE_SIZE_4K || padd_size == PAGE_SIZE_2M);
-      break;
-    case TAB_LEVEL_3:
-      kernel_assert(padd_size == PAGE_SIZE_4K || padd_size == PAGE_SIZE_1G);
-      break;
-    default:
-      kernel_panic("Invalid page table level");
+  case TAB_LEVEL_4:
+  case TAB_LEVEL_1:
+    kernel_assert(padd_size == PAGE_SIZE_4K);
+    break;
+  case TAB_LEVEL_2:
+    kernel_assert(padd_size == PAGE_SIZE_4K || padd_size == PAGE_SIZE_2M);
+    break;
+  case TAB_LEVEL_3:
+    kernel_assert(padd_size == PAGE_SIZE_4K || padd_size == PAGE_SIZE_1G);
+    break;
+  default:
+    kernel_panic("Invalid page table level");
   }
 
   kernel_assert(mm_align_check(padd, padd_size));
   kernel_assert(padd < VADD_48_LOW_END);
 
   (*(u64_t *)e) = padd;
-  if(present) {
+  if (present) {
     e->present = 1;
   }
-  if(write) {
+  if (write) {
     e->writable = 1;
   }
   if (padd_size == PAGE_SIZE_2M || padd_size == PAGE_SIZE_1G) {
@@ -167,7 +172,7 @@ base_private base_must_check bo_t _map_early(vptr_t va, vptr_t pa)
         break;
       }
     }
-    
+
     tab = _tab_entry_get_padd(entry);
   }
 
@@ -182,8 +187,8 @@ base_private base_must_check bo_t _map_early(vptr_t va, vptr_t pa)
   return ok;
 }
 
-void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end, 
-    uptr_t phy_start, uptr_t phy_end)
+void mm_page_early_init(
+    uptr_t kernel_start, uptr_t kernel_end, uptr_t phy_start, uptr_t phy_end)
 {
   uptr_t map_start = mm_align_down(kernel_start, PAGE_SIZE_2M);
   uptr_t map_end = phy_end;
@@ -195,13 +200,14 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end,
 
   kernel_assert(map_start <= kernel_start);
   kernel_assert(map_end > kernel_end);
-  kernel_assert(mm_align_check(map_start, PAGE_SIZE_2M)); 
+  kernel_assert(mm_align_check(map_start, PAGE_SIZE_2M));
 
   _tab_zero(_tab_4);
 
   for (va = map_start; (va + PAGE_SIZE_2M) < map_end; va += PAGE_SIZE_2M) {
     ok = _map_early((vptr_t)va, (vptr_t)va);
-    if (!ok) break;
+    if (!ok)
+      break;
   }
   _early_end_page = va;
 

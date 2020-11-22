@@ -100,8 +100,6 @@ add_custom_target(kernel_symbols COMMAND objcopy --only-keep-debug
 )
 add_dependencies(kernel_symbols kernel)
 
-# Fix cide format by:
-# clang-format -style=file -fallback-style=none -sort-includes -i <path to src>
 if(BUILD_TOOL_CLANG_FORMAT)
   foreach(SRC_FILE ${BUILD_SRC_ALL})
     add_custom_command(TARGET kernel PRE_BUILD

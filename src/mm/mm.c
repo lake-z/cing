@@ -55,7 +55,7 @@ i64_t mm_compare(byte_t *mem1, byte_t *mem2, usz_t len)
   kernel_assert(len > 0);
   for (usz_t i = 0; i < len; i++) {
     cmp = mem1[i] - mem2[i];
-    if(cmp != 0) {
+    if (cmp != 0) {
       break;
     }
   }
@@ -88,9 +88,7 @@ bo_t mm_align_check(uptr_t p, u64_t align)
 }
 
 base_private void _init_kernel_elf_symbols(
-    const byte_t *kernel_elf_info,
-    usz_t elf_info_len base_may_unuse
-)
+    const byte_t *kernel_elf_info, usz_t elf_info_len base_may_unuse)
 {
   multiboot_tag_elf_sections_t *secs;
   multiboot_elf_sections_entry_t *entry;
@@ -133,8 +131,7 @@ base_private void _init_kernel_elf_symbols(
   log_line_end(LOG_LEVEL_INFO);
 }
 
-void mm_early_init(
-    const byte_t *kernel_elf_info,
+void mm_early_init(const byte_t *kernel_elf_info,
     usz_t elf_info_len base_may_unuse,
     const byte_t *mmap_info,
     usz_t mmap_info_len)

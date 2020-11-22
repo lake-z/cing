@@ -22,7 +22,7 @@ base_private void _init_rsdt(byte_t *rsdt)
 
   sdt_header_t *sdt = (sdt_header_t *)rsdt;
   usz_t entry_cnt = (sdt->len - sizeof(sdt_header_t)) / 4;
- 
+
   log_str(LOG_LEVEL_INFO, "signature: ");
   log_str_len(LOG_LEVEL_INFO, sdt->signature, 4);
   log_str(LOG_LEVEL_INFO, ", ");

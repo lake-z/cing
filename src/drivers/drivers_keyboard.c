@@ -1,9 +1,9 @@
 #include "drivers_keyboard.h"
 #include "containers_string.h"
+#include "drivers_port.h"
 #include "drivers_screen.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
-#include "drivers_port.h"
 
 typedef enum {
   KEYBOARD_CMD_DISABLE_SCAN = 0xad,

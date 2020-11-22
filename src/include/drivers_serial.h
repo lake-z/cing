@@ -4,6 +4,6 @@
 #include "base.h"
 
 void serial_init(void);
-void serial_write_str(const ch_t* str, usz_t len);
+void serial_write_str(const ch_t *str, usz_t len);
 
 #endif

@@ -1,7 +1,7 @@
 #include "drivers_screen.h"
 #include "containers_string.h"
-#include "kernel_panic.h"
 #include "drivers_port.h"
+#include "kernel_panic.h"
 
 base_private byte_t *const _video_buffer = (byte_t *)0xB8000;
 base_private const byte_t _CHAR_NULL = 0;

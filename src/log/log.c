@@ -14,8 +14,8 @@ base_private const u64_t _SIZE_UNITS[_SIZE_COUNT] = {
   1024 * 1024 * 1024, 1024 * 1024, 1024
 };
 
-base_private const ch_t *_SIZE_NOTES[_SIZE_COUNT] = { "ZB", "PB", "TB", "GB", "MB",
-  "KB" };
+base_private const ch_t *_SIZE_NOTES[_SIZE_COUNT] = { "ZB", "PB", "TB", "GB",
+  "MB", "KB" };
 
 base_private const ch_t *_LINE_PREFIX_LEVEL[LOG_LEVEL_FATAL + 1] = { "[DBG]",
   "[INF]", "[WRN]", "[ERR]", "[FAT]" };
@@ -49,8 +49,8 @@ void log_uint_of_size(log_level_t lv, u64_t uval)
     uval = uval % _SIZE_UNITS[i];
   }
 
-  if((uval % _SIZE_UNITS[0]) > 0) {
-      log_uint(lv, uval % _SIZE_UNITS[0]);
+  if ((uval % _SIZE_UNITS[0]) > 0) {
+    log_uint(lv, uval % _SIZE_UNITS[0]);
   }
 }
 

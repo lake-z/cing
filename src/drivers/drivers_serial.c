@@ -1,6 +1,6 @@
-#include "drivers_port.h"
 #include "drivers_serial.h"
 #include "containers_string.h"
+#include "drivers_port.h"
 
 base_private const u16_t _SPEED_115200_BAUDS = 1;
 base_private const u16_t _SPEED_57600_BAUDS = 2;
@@ -34,15 +34,16 @@ base_private bo_t _fifo_transmit_is_empty(void)
   return (data & 0x20);
 }
 
-base_private void _write_char(ch_t c)                                         
-{                                                                               
-  while (_fifo_transmit_is_empty() == false);
+base_private void _write_char(ch_t c)
+{
+  while (_fifo_transmit_is_empty() == false)
+    ;
   port_write_byte(PORT_NO_SERIAL_COM1, (byte_t)c);
-}   
+}
 
-void serial_write_str(const ch_t* str, usz_t len)                                
-{                                                                               
-  for (usz_t i = 0; i < len; i++) {                                    
-    _write_char(str[i]);                                                  
-  }                                                                             
-}  
+void serial_write_str(const ch_t *str, usz_t len)
+{
+  for (usz_t i = 0; i < len; i++) {
+    _write_char(str[i]);
+  }
+}

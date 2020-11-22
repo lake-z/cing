@@ -80,7 +80,6 @@ base_no_return _kernel_panic(const char *file, usz_t line, const char *msg)
   log_uint(LOG_LEVEL_FATAL, line);
   log_line_end(LOG_LEVEL_FATAL);
 
-
   while (1) {
     __asm__("hlt");
   }

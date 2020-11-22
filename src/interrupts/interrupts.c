@@ -1,8 +1,8 @@
 #include "interrupts.h"
 #include "containers_string.h"
+#include "drivers_port.h"
 #include "drivers_screen.h"
 #include "kernel_panic.h"
-#include "drivers_port.h"
 
 /* Forwarded declarations */
 typedef enum { IDT_GATE_TYPE_INTERRUPT, IDT_GATE_TYPE_TRAP } idt_gate_type_t;
@@ -45,8 +45,8 @@ extern void irq2(void);
 extern void irq3(void);
 extern void irq4(void);
 
-extern void isr37(void); 
-extern void isr38(void); 
+extern void isr37(void);
+extern void isr38(void);
 extern void isr39(void);
 extern void isr40(void);
 extern void isr41(void);
@@ -704,7 +704,8 @@ void intr_isr_handler(u64_t id, uptr_t stack_addr)
 
   msg_len = 0;
   msg_part = "TODO: intr_isr_handler, id = ";
-  msg_len += str_buf_marshal_str(msg, msg_len, MSG_CAP, msg_part, str_len(msg_part));
+  msg_len +=
+      str_buf_marshal_str(msg, msg_len, MSG_CAP, msg_part, str_len(msg_part));
   msg_len += str_buf_marshal_uint(msg, msg_len, MSG_CAP, iid);
   msg_len += str_buf_marshal_terminator(msg, msg_len, MSG_CAP);
   kernel_panic(msg);

@@ -76,7 +76,7 @@ base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
       _phy_mem_secs[_phy_mem_sec_count].base = (uptr_t)base;
       _phy_mem_secs[_phy_mem_sec_count].len = len;
       if (_phy_mem_sec_count > 0) {
-        uptr_t last_end  = _phy_mem_secs[_phy_mem_sec_count - 1].base;
+        uptr_t last_end = _phy_mem_secs[_phy_mem_sec_count - 1].base;
         last_end += _phy_mem_secs[_phy_mem_sec_count - 1].len;
         kernel_assert(_phy_mem_secs[_phy_mem_sec_count].base > last_end);
       }
@@ -111,8 +111,8 @@ void mm_frame_init(u64_t kernel_end)
   _free_count = 0;
 
   /* Last 2MB space is not mapped by the early stage frame manager */
-  for (frame = (uptr_t)_frames_start; (frame + FRAME_SIZE_2M) < padd_end(); 
-      frame += FRAME_SIZE_4K) {
+  for (frame = (uptr_t)_frames_start; (frame + FRAME_SIZE_2M) < padd_end();
+       frame += FRAME_SIZE_4K) {
     mm_frame_return((byte_t *)frame);
   }
 
@@ -145,7 +145,7 @@ bo_t mm_frame_get(byte_t **out_frame)
   } else {
     bo_t ok;
 
-    if(_free_head == NULL) {
+    if (_free_head == NULL) {
       ok = false;
     } else {
       (*out_frame) = (byte_t *)_free_head;
