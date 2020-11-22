@@ -15,4 +15,6 @@ void mm_early_init(const byte_t *kernel_elf_info,
     const byte_t *mmap_info,
     usz_t mmap_info_len);
 
+void mm_init(void);
+
 #endif

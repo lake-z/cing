@@ -13,6 +13,10 @@ typedef enum {
   FRAME_SIZE_1G = 1024 * 1024 * 1024,
 } frame_size_t;
 
+typedef struct frame_free {
+  struct frame_free *next;
+} frame_free_t;
+
 /* Max number of physical memory sections allowed */
 #define _PHY_MEM_SECTION_MAX 1024
 base_private phy_mem_section_t _phy_mem_secs[_PHY_MEM_SECTION_MAX];
@@ -25,6 +29,11 @@ base_private usz_t _phy_mem_size;
 byte_t _early_frame_pool[_EARLY_FRAME_COUNT * FRAME_SIZE_4K] base_align(4096);
 base_private usz_t _early_frame_count;
 base_private bo_t _is_early_stage;
+
+base_private byte_t *_frames_start;
+
+base_private frame_free_t *_free_head;
+base_private u64_t _free_count;
 
 base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
 {
@@ -90,6 +99,32 @@ void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len)
   _is_early_stage = true;
 }
 
+void mm_frame_init(u64_t kernel_end)
+{
+  uptr_t frame;
+
+  kernel_assert(_is_early_stage);
+
+  _frames_start = (byte_t *)mm_align_up(kernel_end, FRAME_SIZE_4K);
+
+  _free_head = NULL;
+  _free_count = 0;
+
+  /* Last 2MB space is not mapped by the early stage frame manager */
+  for (frame = (uptr_t)_frames_start; (frame + FRAME_SIZE_2M) < padd_end(); 
+      frame += FRAME_SIZE_4K) {
+    mm_frame_return((byte_t *)frame);
+  }
+
+  _is_early_stage = false;
+
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "mm frames manager inited, ");
+  log_uint(LOG_LEVEL_INFO, _free_count);
+  log_str(LOG_LEVEL_INFO, " free frames available.");
+  log_line_end(LOG_LEVEL_INFO);
+}
+
 base_private base_must_check bo_t _get_early(byte_t **out_frame)
 {
   bo_t ok;
@@ -108,8 +143,29 @@ bo_t mm_frame_get(byte_t **out_frame)
   if (base_unlikely(_is_early_stage)) {
     return _get_early(out_frame);
   } else {
-    kernel_panic("TODO");
+    bo_t ok;
+
+    if(_free_head == NULL) {
+      ok = false;
+    } else {
+      (*out_frame) = (byte_t *)_free_head;
+      _free_head = _free_head->next;
+      _free_count--;
+      ok = true;
+    }
+    return ok;
   }
+}
+
+void mm_frame_return(byte_t *frame)
+{
+  frame_free_t *free;
+
+  kernel_assert(frame != NULL);
+  free = (frame_free_t *)frame;
+  free->next = _free_head;
+  _free_head = (frame_free_t *)frame;
+  _free_count++;
 }
 
 uptr_t padd_start(void)

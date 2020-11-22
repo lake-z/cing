@@ -159,13 +159,16 @@ void kernal_main(uptr_t multi_boot_info)
   acpi_init(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD], 
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
  
+  intr_init();
+
+  mm_init();
+
   _kernel_halt();
 
 
   /*
 
 
-  intr_init();
   time_init();
   keyboard_init();
   intr_irq_enable();

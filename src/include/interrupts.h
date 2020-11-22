@@ -49,7 +49,10 @@ typedef enum {
 } intr_id_t;
 typedef void (*intr_handler_cb)(intr_id_t id, intr_parameters_t *para);
 
+/* Initialize interrupt module, after this initialization is finished, IRQs
+ * will be in disabled state, enable with intr_irq_enable(). */
 void intr_init(void);
+
 void intr_irq_enable(void);
 void intr_irq_disable(void);
 void intr_isr_handler(u64_t id, uptr_t stack_addr);

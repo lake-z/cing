@@ -1,5 +1,6 @@
 #include "kernel_panic.h"
 #include "drivers_screen.h"
+#include "log.h"
 
 base_private void _unsigned_to_str(usz_t uval, char *buf, usz_t buf_cap)
 {
@@ -67,6 +68,19 @@ base_no_return _kernel_panic(const char *file, usz_t line, const char *msg)
   screen_write_str(
       ln_str, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, SCREEN_HEIGHT - 1, 0);
 
+  log_line_start(LOG_LEVEL_FATAL);
+  log_str(LOG_LEVEL_FATAL, "Kernel panic! ");
+  log_str(LOG_LEVEL_FATAL, msg);
+  log_line_end(LOG_LEVEL_FATAL);
+
+  log_line_start(LOG_LEVEL_FATAL);
+  log_str(LOG_LEVEL_FATAL, "File: ");
+  log_str(LOG_LEVEL_FATAL, file);
+  log_str(LOG_LEVEL_FATAL, ", line: ");
+  log_uint(LOG_LEVEL_FATAL, line);
+  log_line_end(LOG_LEVEL_FATAL);
+
+
   while (1) {
     __asm__("hlt");
   }
@@ -92,6 +106,18 @@ base_no_return _kernel_assert_fail(
       "Line:", SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, SCREEN_HEIGHT - 2, 0);
   screen_write_str(
       ln_str, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, SCREEN_HEIGHT - 1, 0);
+
+  log_line_start(LOG_LEVEL_FATAL);
+  log_str(LOG_LEVEL_FATAL, "Kernel assertion failure! Expression: ");
+  log_str(LOG_LEVEL_FATAL, expr);
+  log_line_end(LOG_LEVEL_FATAL);
+
+  log_line_start(LOG_LEVEL_FATAL);
+  log_str(LOG_LEVEL_FATAL, "File: ");
+  log_str(LOG_LEVEL_FATAL, file);
+  log_str(LOG_LEVEL_FATAL, ", line: ");
+  log_uint(LOG_LEVEL_FATAL, line);
+  log_line_end(LOG_LEVEL_FATAL);
 
   while (1) {
     __asm__("hlt");

@@ -3,8 +3,10 @@
 #include "mm_private.h"
 #include "cpu.h"
 
+#define _PAGE_SIZE_4K 4096
+
 typedef enum {
-  PAGE_SIZE_4K = 4 * 1024,
+  PAGE_SIZE_4K = _PAGE_SIZE_4K,
   PAGE_SIZE_2M = 2 * 1024 * 1024,
   PAGE_SIZE_1G = 1024 * 1024 * 1024,
 } page_size_t;
@@ -37,10 +39,26 @@ typedef struct {
   bo_t no_exe : 1;
 } base_struct_packed tab_entry_t;
 
+base_private uptr_t _early_end_page;
+
 base_private const u64_t _TAB_ENTRY_LEN = 8;
 #define _TAB_ENTRY_COUNT 512
-base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(4096);
+base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
 
+/*
+base_private vptr_t _sec_access_vadd;
+base_private tab_entry_t _tmp_iden_tab_3[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
+base_private tab_entry_t _tmp_iden_tab_2[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
+base_private tab_entry_t _tmp_iden_tab_1[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
+base_private tab_entry_t *_tmp_iden_tab_entry;
+*/
+
+/* Virtual address layout 
+ * --------
+ * [*] kernel_start .. kernel_end is a direct mapping
+ * [*] First page after VADD_48_HIGH_START is a temp mapping to handle cases 
+ *     such as double page fault.
+ */
 base_private const uptr_t VADD_LOW_START = u64_literal(0);
 base_private const uptr_t VADD_48_LOW_END = u64_literal(0x00007fffffffffff);
 base_private const uptr_t VADD_48_HIGH_START = u64_literal(0xffff800000000000);
@@ -169,6 +187,8 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end,
 {
   uptr_t map_start = mm_align_down(kernel_start, PAGE_SIZE_2M);
   uptr_t map_end = phy_end;
+  uptr_t va;
+  bo_t ok;
 
   kernel_assert(sizeof(tab_entry_t) == _TAB_ENTRY_LEN);
   kernel_assert(phy_start <= kernel_start);
@@ -179,10 +199,42 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end,
 
   _tab_zero(_tab_4);
 
-  for (uptr_t va = map_start; (va + PAGE_SIZE_2M) < map_end; va += PAGE_SIZE_2M) {
-    bo_t ok = _map_early((vptr_t)va, (vptr_t)va);
+  for (va = map_start; (va + PAGE_SIZE_2M) < map_end; va += PAGE_SIZE_2M) {
+    ok = _map_early((vptr_t)va, (vptr_t)va);
     if (!ok) break;
   }
+  _early_end_page = va;
 
   _tab_root_load(_tab_4);
 }
+
+/*
+base_private void _init_tmp_iden()
+{
+  tab_entry_index_t en_idx;// = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_4);
+  tab_entry_t *en;// = &_tab_4[en_idx];
+
+  _tab_zero(_tmp_iden_tab_3);
+  _tab_entry_init(en, TAB_LEVEL_4, true, true, _tmp_iden_tab_3, PAGE_SIZE_4K);
+
+  _tab_zero(_tmp_iden_tab_2);
+  en_idx = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_3);
+  en = &_tmp_iden_tab_3[en_idx];
+  _tab_entry_init(en, TAB_LEVEL_3, true, true, _tmp_iden_tab_2, PAGE_SIZE_4K);
+
+  _tab_zero(_tmp_iden_tab_1);
+  en_idx = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_2);
+  en = &_tmp_iden_tab_2[en_idx];
+  _tab_entry_init(en, TAB_LEVEL_2, true, true, _tmp_iden_tab_1, PAGE_SIZE_4K);
+
+  en_idx = _vadd_tab_index(VADD_48_HIGH_START, TAB_LEVEL_1);
+  _tmp_iden_tab_entry = &_tmp_iden_tab_1[en_idx];
+}
+*/
+
+/*
+void mm_page_init(uptr_t kernel_start, uptr_t kernel_end)
+{
+  kernel_panic("TODO");
+}
+*/

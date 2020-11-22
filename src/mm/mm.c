@@ -143,3 +143,8 @@ void mm_early_init(
   _init_kernel_elf_symbols(kernel_elf_info, elf_info_len);
   mm_page_early_init(_kernel_start, _kernel_end, padd_start(), padd_end());
 }
+
+void mm_init(void)
+{
+  mm_frame_init(_kernel_end);
+}
