@@ -3,8 +3,9 @@
 #include "drivers_port.h"
 
 base_private const u16_t _SPEED_115200_BAUDS = 1;
-base_private const u16_t _SPEED_57600_BAUDS = 2;
-base_private const u16_t _SPEED_38400_BAUDS = 3;
+/* Currently not used */
+base_private base_may_unuse const u16_t _SPEED_57600_BAUDS = 2;
+base_private base_may_unuse const u16_t _SPEED_38400_BAUDS = 3;
 
 void serial_init(void)
 {

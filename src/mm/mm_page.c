@@ -60,10 +60,13 @@ base_private tab_entry_t *_direct_tab_entry;
  * [*] First page after VADD_48_HIGH_START is a temp mapping to handle cases
  *     such as double page fault.
  */
-base_private const uptr_t VADD_LOW_START = u64_literal(0);
-base_private const uptr_t VADD_48_LOW_END = u64_literal(0x00007fffffffffff);
-base_private const uptr_t VADD_48_HIGH_START = u64_literal(0xffff800000000000);
-base_private const uptr_t VADD_HIGH_END = u64_literal(0xffffffffffffffff);
+base_private base_may_unuse const uptr_t VADD_LOW_START = u64_literal(0);
+base_private base_may_unuse const uptr_t VADD_48_LOW_END =
+    u64_literal(0x00007fffffffffff);
+base_private base_may_unuse const uptr_t VADD_48_HIGH_START =
+    u64_literal(0xffff800000000000);
+base_private base_may_unuse const uptr_t VADD_HIGH_END =
+    u64_literal(0xffffffffffffffff);
 
 /* Forwarded declaration of functions */
 base_private tab_entry_index_t _vadd_tab_index(uptr_t va, tab_level_t level);
