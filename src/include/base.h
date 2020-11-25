@@ -47,6 +47,7 @@ typedef uintptr_t uptr_t;
 #define I64_MIN (-i64_literal(0x7FFFFFFFFFFFFFFF) - 1)
 #define I64_MAX i64_literal(0x7FFFFFFFFFFFFFFF)
 #define U64_MAX u64_literal(0xFFFFFFFFFFFFFFFF)
+#define UPTR_NULL 0
 
 #define PRINT_I8 "%d"
 #define PRINT_I16 "%d"

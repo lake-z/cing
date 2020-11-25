@@ -14,7 +14,7 @@ typedef enum {
 } frame_size_t;
 
 typedef struct frame_free {
-  struct frame_free *next;
+  uptr_t next; /* Physical address of next free frame */
 } frame_free_t;
 
 /* Max number of physical memory sections allowed */
@@ -25,14 +25,15 @@ base_private usz_t _phy_mem_sec_count;
 /* Total size of physical memory */
 base_private usz_t _phy_mem_size;
 
-#define _EARLY_FRAME_COUNT 16 * 1024
-byte_t _early_frame_pool[_EARLY_FRAME_COUNT * FRAME_SIZE_4K] base_align(4096);
+/* Frames can be used during early stage of mm initialization. */
+#define _EARLY_FRAME_CAP 16 * 1024
+byte_t _early_frame_pool[_EARLY_FRAME_CAP * FRAME_SIZE_4K] base_align(4096);
 base_private usz_t _early_frame_count;
 base_private bo_t _is_early_stage;
 
-base_private byte_t *_frames_start;
-
-base_private frame_free_t *_free_head;
+/* Physical address of the head of free frame list.
+ * Every 4K frame can be cast to frame_free_t and linked with next pointer. */
+base_private uptr_t _free_head;
 base_private u64_t _free_count;
 
 base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
@@ -71,7 +72,7 @@ base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
     ptr += 4;
 
     /* Ignores memory below 1MB */
-    if (type == 1 && (base >= 1024 * 1024)) {
+    if (type == 1) {
       kernel_assert(_phy_mem_sec_count < _PHY_MEM_SECTION_MAX);
       _phy_mem_secs[_phy_mem_sec_count].base = (uptr_t)base;
       _phy_mem_secs[_phy_mem_sec_count].len = len;
@@ -95,40 +96,38 @@ void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len)
 {
   _early_frame_count = 0;
   _init_mmap_info(mmap_info, mmap_info_len);
-
   _is_early_stage = true;
 }
 
-void mm_frame_init(u64_t kernel_end)
+// base_private byte_t *_frames_start;
+// void mm_frame_init(u64_t kernel_end)
+void mm_frame_init(void)
 {
-  uptr_t frame;
+  // uptr_t frame;
 
   kernel_assert(_is_early_stage);
 
-  _frames_start = (byte_t *)mm_align_up(kernel_end, FRAME_SIZE_4K);
+  // _frames_start = (byte_t *)mm_align_up(kernel_end, FRAME_SIZE_4K);
 
-  _free_head = NULL;
+  _free_head = UPTR_NULL;
   _free_count = 0;
 
-  /* Last 2MB space is not mapped by the early stage frame manager */
+  /* Last 2MB space is not mapped by the early stage frame manager 
   for (frame = (uptr_t)_frames_start; (frame + FRAME_SIZE_2M) < padd_end();
        frame += FRAME_SIZE_4K) {
-    mm_frame_return((byte_t *)frame);
+    mm_frame_return((byte_t *)frame, frame);
   }
-
+  */
   _is_early_stage = false;
-
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "mm frames manager inited, ");
-  log_uint(LOG_LEVEL_INFO, _free_count);
-  log_str(LOG_LEVEL_INFO, " free frames available.");
-  log_line_end(LOG_LEVEL_INFO);
 }
 
-base_private base_must_check bo_t _get_early(byte_t **out_frame)
+base_must_check bo_t mm_frame_get_early(byte_t **out_frame)
 {
   bo_t ok;
-  if (_early_frame_count < _EARLY_FRAME_COUNT) {
+
+  kernel_assert(_is_early_stage);
+
+  if (_early_frame_count < _EARLY_FRAME_CAP) {
     (*out_frame) = _early_frame_pool + _early_frame_count * FRAME_SIZE_4K;
     _early_frame_count++;
     ok = true;
@@ -138,40 +137,44 @@ base_private base_must_check bo_t _get_early(byte_t **out_frame)
   return ok;
 }
 
-bo_t mm_frame_get(byte_t **out_frame)
+base_must_check bo_t mm_frame_get(uptr_t *out_frame)
 {
-  if (base_unlikely(_is_early_stage)) {
-    return _get_early(out_frame);
+  bo_t ok;
+  frame_free_t *free_head_va;
+
+  kernel_assert(!_is_early_stage);
+
+  if (_free_head == 0) {
+    ok = false;
   } else {
-    bo_t ok;
+    kernel_assert(mm_align_check(_free_head, FRAME_SIZE_4K));
+    (*out_frame) = _free_head;
 
-    if (_free_head == NULL) {
-      ok = false;
-    } else {
-      kernel_assert(mm_align_check((uptr_t)_free_head, FRAME_SIZE_4K));
-
-      /* Free frame may not be vitual address accessable, set up a safe mapping
-       * from virtual address to physical address */
-      mm_page_sec_access_setup(_free_head);
-
-      (*out_frame) = (byte_t *)_free_head;
-      _free_head = _free_head->next;
-      _free_count--;
-      ok = true;
-    }
-    return ok;
+    /* Free frame may not be vitual address accessable, set up a safe mapping
+     * from virtual address to physical address */
+    free_head_va = mm_page_direct_access_setup(*out_frame);
+    _free_head = free_head_va->next;
+    _free_count--;
+    mm_page_direct_access_reset();
+    ok = true;
   }
+  return ok;
 }
 
-void mm_frame_return(byte_t *frame)
+void mm_frame_return(byte_t *frame_va, uptr_t frame_pa)
 {
   frame_free_t *free;
 
-  kernel_assert(frame != NULL);
-  free = (frame_free_t *)frame;
+  free = (frame_free_t *)frame_va;
   free->next = _free_head;
-  _free_head = (frame_free_t *)frame;
+
+  _free_head = frame_pa;
   _free_count++;
+}
+
+u64_t mm_frame_free_count(void)
+{
+  return _free_count;
 }
 
 uptr_t padd_start(void)

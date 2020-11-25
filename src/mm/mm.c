@@ -138,11 +138,17 @@ void mm_early_init(const byte_t *kernel_elf_info,
 {
   mm_frame_early_init(mmap_info, mmap_info_len);
   _init_kernel_elf_symbols(kernel_elf_info, elf_info_len);
-  mm_page_early_init(_kernel_start, _kernel_end, padd_start(), padd_end());
+  mm_page_early_init(_kernel_start, _kernel_end);
 }
 
 void mm_init(void)
 {
-  mm_frame_init(_kernel_end);
+  mm_frame_init();
   mm_page_init(_kernel_start, _kernel_end);
+
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "mm initialize finished, ");
+  log_uint(LOG_LEVEL_INFO, mm_frame_free_count());
+  log_str(LOG_LEVEL_INFO, " free frames available. ");
+  log_line_end(LOG_LEVEL_INFO);
 }

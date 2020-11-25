@@ -35,10 +35,15 @@ set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_LINKER>  <FLAGS> <CMAKE_C_LINK_FLAGS> \
 option(BUILD_DEBUG_ENABLED "Enable debug codes or not" ON)
 message("${CMAKE_CURRENT_SOURCE_DIR}: Debug enabled: ${BUILD_DEBUG_ENABLED}")
 
-execute_process(COMMAND git log --pretty=format:'%h' -n 1
-  OUTPUT_VARIABLE BUILD_GIT_REV ERROR_QUIET)
+execute_process(COMMAND git log --pretty=format:"%h" -n 1
+  OUTPUT_VARIABLE BUILD_GIT_REVISION ERROR_QUIET)
+add_compile_definitions(BUILD_GIT_REVISION=${BUILD_GIT_REVISION})
+message("${CMAKE_CURRENT_SOURCE_DIR}: Git revision: ${BUILD_GIT_REVISION}")
 
-message("${CMAKE_CURRENT_SOURCE_DIR}: Git revision: ${BUILD_GIT_REV}")
+option(BUILD_OPT_TEST_MODE_ENABLE "Enable test mode or not" OFF)
+if(BUILD_OPT_TEST_MODE_ENABLE)
+  ADD_COMPILE_DEFINITIONS(BUILD_TEST_MODE_ENABLED)
+endif()
 
 add_subdirectory(src)
 

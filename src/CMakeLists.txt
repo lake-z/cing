@@ -24,8 +24,8 @@ SET_SOURCE_FILES_PROPERTIES(
   GENERATED true
 )
 
-set(BUILD_SRC_MODULES 
-  containers  
+set(BUILD_SRC_MODULES
+  containers
   cpu
   drivers
   interrupts
