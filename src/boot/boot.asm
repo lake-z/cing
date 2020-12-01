@@ -1,5 +1,7 @@
 global start	; exports a label (makes it public). As start will be the entry
 		; point of our kernel, it needs to be public.
+global boot_stack_bottom
+global boot_stack_top
 
 section .text	; executable code
 bits 32		; specifies that the following lines are 32-bit instructions.
@@ -7,10 +9,13 @@ bits 32		; specifies that the following lines are 32-bit instructions.
 		; GRUB starts our kernel. When we switch to Long mode, we can
 		; use bits 64 (64-bit instructions).
 start:
-	mov esp, stack_top
-	; `ebx` points to a boot information structure. We move it to `edi` to
-	; pass it to our kernel.
-	mov edi, ebx
+	mov esp, boot_stack_bottom
+  ; According to the ABI, the first 6 integer or pointer arguments to a
+  ; function are passed in registers. The first is placed in rdi, the second in 
+  ; rsi, the third in rdx, and then rcx, r8 and r9. Only the 7th argument and
+  ; onwards are passed on the stack.
+	mov esi, boot_stack_bottom
+	mov edi, ebx ; ebx points to a boot information structure.
 
 	; various checks before we can move on.
 	call check_multiboot
@@ -191,11 +196,9 @@ p3_table:
     resb 4096
 p2_table:
     resb 4096
-; cf. http://os.phil-opp.com/allocating-frames.html
-; the stack now has 16kB (four pages)
-stack_bottom:
-    resb 1024 * 1024
-stack_top:
+boot_stack_top:
+    resb 4096
+boot_stack_bottom:
 
 ; -----------------------------------------------------------------------------
 ; After enable paging, the processor is still in a 32-bit compatibility

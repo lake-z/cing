@@ -4,7 +4,7 @@
 #include "mm.h"
 
 void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end);
-void mm_page_init(uptr_t kernel_start, uptr_t kernel_end);
+void mm_page_init(uptr_t kernel_start, uptr_t kernel_end, uptr_t boot_stack_bottom, uptr_t boot_stack_top);
 
 /* Set up a direct accees for given physical address
  *

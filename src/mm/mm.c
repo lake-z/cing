@@ -1,3 +1,4 @@
+#include "boot.h"
 #include "containers_string.h"
 #include "kernel_panic.h"
 #include "log.h"
@@ -126,7 +127,7 @@ base_private void _init_kernel_elf_symbols(
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "kernel start: ");
   log_uint_of_size(LOG_LEVEL_INFO, _kernel_start);
-  log_str(LOG_LEVEL_INFO, ", end:  ");
+  log_str(LOG_LEVEL_INFO, ", end: ");
   log_uint_of_size(LOG_LEVEL_INFO, _kernel_end);
   log_line_end(LOG_LEVEL_INFO);
 }
@@ -144,7 +145,7 @@ void mm_early_init(const byte_t *kernel_elf_info,
 void mm_init(void)
 {
   mm_frame_init();
-  mm_page_init(_kernel_start, _kernel_end);
+  mm_page_init(_kernel_start, _kernel_end, (uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "mm initialize finished, ");

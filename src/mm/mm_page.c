@@ -39,6 +39,26 @@ typedef struct {
   bo_t no_exe : 1;
 } base_struct_packed tab_entry_t;
 
+/* Virtual address layout of kernel
+ * --------
+ * [*] Low memory that's never used
+ * [*] kernel_start .. kernel_end is a direct mapping
+ * [*] kernel_end .. VADD_48_LOW_END , the heap
+ * [*] VADD_48_HIGH_START .. VADD_48_HIGH_START + 256 pages, the stack
+ * [*] VADD_48_HIGH_START + 256 pages .. VADD_48_HIGH_START + 257 pages,
+ *      the temporary direct access page 
+ */
+#define _VADD_LOW_START u64_literal(0)
+#define _VADD_48_LOW_END u64_literal(0x00007fffffffffff)
+#define _VADD_48_HIGH_START u64_literal(0xffff800000000000)
+#define _VADD_HIGH_END u64_literal(0xffffffffffffffff)
+#define _VADD_DIRECT_ACCESS_PAGE _VADD_48_HIGH_START + 256 * _PAGE_SIZE_4K
+
+base_private const uptr_t _VADD_STACK_BP_BOTTOM_GUARD = _VADD_48_HIGH_START + 255 * PAGE_SIZE_4K;
+base_private const uptr_t _VADD_STACK_BP_BOTTOM = _VADD_48_HIGH_START + 254 * PAGE_SIZE_4K;
+base_private const uptr_t _VADD_STACK_BP_TOP = _VADD_48_HIGH_START + 1 * PAGE_SIZE_4K;
+base_private const uptr_t _VADD_STACK_BP_TOP_GUARD = _VADD_48_HIGH_START;
+
 #define _TAB_ENTRY_LEN 8
 #define _TAB_ENTRY_COUNT 512
 base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
@@ -54,24 +74,14 @@ base_private
 base_private tab_entry_t *_direct_tab[3];
 base_private tab_entry_t *_direct_tab_entry;
 
-/* Virtual address layout
- * --------
- * [*] kernel_start .. kernel_end is a direct mapping
- * [*] First page after VADD_48_HIGH_START is a temp mapping to handle cases
- *     such as double page fault.
- */
-base_private base_may_unuse const uptr_t VADD_LOW_START = u64_literal(0);
-base_private base_may_unuse const uptr_t VADD_48_LOW_END =
-    u64_literal(0x00007fffffffffff);
-base_private base_may_unuse const uptr_t VADD_48_HIGH_START =
-    u64_literal(0xffff800000000000);
-base_private base_may_unuse const uptr_t VADD_HIGH_END =
-    u64_literal(0xffffffffffffffff);
-
 /* Forwarded declaration of functions */
 base_private tab_entry_index_t _vadd_tab_index(uptr_t va, tab_level_t level);
-uptr_t _direct_access_get_padd(vptr_t va);
+base_private bo_t _direct_access_is_reset(void);
 base_private usz_t _vadd_page_offset(uptr_t va, tab_level_t lv);
+
+/* Builtin tests declarations */
+base_private byte_t _test_direct_access_bytes[PAGE_SIZE_4K] base_align(
+    _PAGE_SIZE_4K);
 
 base_private void _tlb_flush(vptr_t va)
 {
@@ -128,7 +138,7 @@ base_private void _tab_entry_init(tab_entry_t *e,
   }
 
   kernel_assert(mm_align_check(padd, padd_size));
-  kernel_assert(padd <= VADD_48_LOW_END || padd >= VADD_48_HIGH_START);
+  kernel_assert(padd <= _VADD_48_LOW_END || padd >= _VADD_48_HIGH_START);
 
   (*(u64_t *)e) = padd;
   if (present) {
@@ -221,8 +231,7 @@ base_private bo_t _map_early(uptr_t va, uptr_t pa)
   return ok;
 }
 
-/*
-base_private bo_t _map(vptr_t va, vptr_t pa)
+base_private bo_t _map(uptr_t va, uptr_t pa)
 {
   uptr_t tab_pa;
   tab_entry_t *tab_va;
@@ -230,43 +239,51 @@ base_private bo_t _map(vptr_t va, vptr_t pa)
   tab_entry_t *entry;
   tab_level_t lv;
   bo_t ok;
+  bo_t present;
+  uptr_t frame_pa;
+  byte_t *frame_va;
 
-   We only supports 4K sized pages 
-  kernel_assert(mm_align_check((uptr_t)va, PAGE_SIZE_4K));
-  kernel_assert(mm_align_check((uptr_t)pa, PAGE_SIZE_4K));
+  /* We only supports 4K sized pages */
+  kernel_assert(mm_align_check(va, PAGE_SIZE_4K));
+  kernel_assert(mm_align_check(pa, PAGE_SIZE_4K));
 
-  / Physical address is the same with virtual address /
+  /* Physical address is the same with virtual address */
   tab_pa = (uptr_t)_tab_4;
+  frame_pa = UPTR_NULL;
   for (lv = TAB_LEVEL_4; lv > TAB_LEVEL_1; lv--) {
-    tab_va = mm_page_direct_access_setup(tab_pa);
-    entry_idx = _vadd_tab_index(va, lv);
-    entry = &(tab_va[entry_idx]);
-    mm_page_direct_access_reset();
-    tab_va = NULL;
-
-    if (!_tab_entry_is_present(entry)) {
-      uptr_t frame_pa;
-      byte_t *frame_va;
-
-      kernel_assert(_tab_entry_is_zero(entry));
-
-      frame_pa = 0;
+    /* Allocate free frame at very begin, to avoid the need of more than 1 
+      * direct access at the same time. */
+    if (frame_pa == UPTR_NULL) {
       ok = mm_frame_get(&frame_pa);
-      if (ok) {
-        kernel_assert(frame_pa != 0);
-        _tab_entry_init(entry, lv, true, true, frame_pa, PAGE_SIZE_4K);
-
+      if (!ok) {
+        break;
+      } else {
         frame_va = mm_page_direct_access_setup(frame_pa);
         _tab_zero((tab_entry_t *)frame_va);
-        mm_page_direct_access_reset();
         frame_va = NULL;
-      } else {
-        break;
+        mm_page_direct_access_reset();
       }
     }
 
+    tab_va = mm_page_direct_access_setup(tab_pa);
+    entry_idx = _vadd_tab_index(va, lv);
+    entry = &(tab_va[entry_idx]);
+    present = _tab_entry_is_present(entry);
+
+    if (!present) {
+      kernel_assert(_tab_entry_is_zero(entry));
+      kernel_assert(frame_pa != UPTR_NULL);
+      _tab_entry_init(entry, lv, true, true, frame_pa, PAGE_SIZE_4K);
+      frame_pa = UPTR_NULL;
+    }
+
     tab_pa = _tab_entry_get_padd(entry);
+    entry = NULL;
+    tab_va = NULL;
+    mm_page_direct_access_reset();
   }
+
+  kernel_assert(_direct_access_is_reset());
 
   if (ok) {
     tab_va = mm_page_direct_access_setup(tab_pa);
@@ -279,7 +296,6 @@ base_private bo_t _map(vptr_t va, vptr_t pa)
 
   return ok;
 }
-*/
 
 base_private uptr_t _unmap(uptr_t va, page_size_t size)
 {
@@ -433,13 +449,23 @@ bo_t vadd_get_padd(vptr_t va, uptr_t *out_pa)
   return present;
 }
 
+uptr_t mm_vadd_stack_bp_bottom_get(void)
+{
+  return _VADD_STACK_BP_BOTTOM;
+}
+
+uptr_t mm_vadd_stack_bp_top_get(void)
+{
+  return _VADD_STACK_BP_TOP;
+}
+
 base_private void _init_direct_access(void)
 {
   tab_entry_t *tab;
   tab_entry_index_t en_idx;
   tab_entry_t *en;
 
-  _direct_vadd = (vptr_t)VADD_48_HIGH_START;
+  _direct_vadd = (vptr_t)(_VADD_DIRECT_ACCESS_PAGE);
   kernel_assert(mm_align_check((uptr_t)_direct_tab, PAGE_SIZE_4K));
 
   for (usz_t i = 0; i < 3; i++) {
@@ -465,7 +491,7 @@ base_private void _init_direct_access(void)
   }
 
   en_idx = _vadd_tab_index((uptr_t)_direct_vadd, TAB_LEVEL_1);
-  _direct_tab_entry = _direct_tab[TAB_LEVEL_1 - 1];
+  _direct_tab_entry = &(_direct_tab[TAB_LEVEL_1 - 1][en_idx]);
   _tab_entry_zero(_direct_tab_entry);
 }
 
@@ -485,15 +511,24 @@ void mm_page_direct_access_reset(void)
   _tlb_flush(_direct_vadd);
 }
 
-uptr_t _direct_access_get_padd(vptr_t va)
+/*
+base_private uptr_t _direct_access_get_padd(vptr_t va);
+base_private uptr_t _direct_access_get_padd(vptr_t va)
 {
   kernel_assert(_tab_entry_is_present(_direct_tab_entry));
   kernel_assert(va == _direct_vadd);
   return _tab_entry_get_padd(_direct_tab_entry);
 }
+*/
 
-base_private byte_t _test_direct_access_bytes[PAGE_SIZE_4K] base_align(
-    _PAGE_SIZE_4K);
+base_private bo_t _direct_access_is_reset(void)
+{
+  bo_t present = _tab_entry_is_present(_direct_tab_entry);
+  if (!present) {
+    kernel_assert(_tab_entry_is_zero(_direct_tab_entry));
+  }
+  return present == false;
+}
 
 base_private void _test_direct_access(void)
 {
@@ -539,7 +574,32 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
   _tab_root_load(_tab_4);
 }
 
-void mm_page_init(uptr_t kernel_start, uptr_t kernel_end)
+base_private void _init_stack_memory(uptr_t boot_stack_top, uptr_t boot_stack_bottom)
+{
+  u64_t stack_position;
+  usz_t stack_len;
+
+  for (uptr_t page = _VADD_STACK_BP_TOP; page <= _VADD_STACK_BP_BOTTOM; page += PAGE_SIZE_4K) {
+    uptr_t frame_pa;
+    bo_t ok = mm_frame_get(&frame_pa);
+
+    kernel_assert(ok == true);
+
+    _map(page, frame_pa);
+  }
+
+  kernel_assert(mm_align_check(boot_stack_bottom, PAGE_SIZE_4K));
+  kernel_assert(mm_align_check(boot_stack_top, PAGE_SIZE_4K));
+  kernel_assert(((uptr_t)&stack_position) > boot_stack_top);
+  kernel_assert(((uptr_t)&stack_position) < boot_stack_bottom);
+
+  stack_len = boot_stack_bottom - (uptr_t)&stack_position;
+  kernel_assert(stack_len < PAGE_SIZE_4K);
+  mm_copy((byte_t *)(_VADD_STACK_BP_BOTTOM - stack_len), (byte_t *)&stack_position, stack_len);
+
+}
+
+void mm_page_init(uptr_t kernel_start, uptr_t kernel_end, uptr_t boot_stack_bottom, uptr_t boot_stack_top)
 {
   uptr_t unmap;
   uptr_t phy_end = padd_end();
@@ -558,4 +618,23 @@ void mm_page_init(uptr_t kernel_start, uptr_t kernel_end)
   }
 
   kernel_assert(unmap == _early_map_end);
+
+  log_line_start(LOG_LEVEL_DEBUG);
+  log_str(LOG_LEVEL_DEBUG, "Current rsp: ");
+  log_uint_of_size(LOG_LEVEL_DEBUG, cpu_read_rsp());
+  log_str(LOG_LEVEL_DEBUG, ", rbp: ");
+  log_uint_of_size(LOG_LEVEL_DEBUG, cpu_read_rbp());
+  log_str(LOG_LEVEL_INFO, ", stack: ");
+  log_uint(LOG_LEVEL_INFO, (uptr_t)boot_stack_bottom);
+  log_str(LOG_LEVEL_INFO, "(");
+  log_uint_of_size(LOG_LEVEL_INFO, (uptr_t)boot_stack_bottom);
+  log_str(LOG_LEVEL_INFO, ")");
+  log_str(LOG_LEVEL_INFO, " .. ");
+  log_uint(LOG_LEVEL_INFO, (uptr_t)boot_stack_top);
+  log_str(LOG_LEVEL_INFO, "(");
+  log_uint_of_size(LOG_LEVEL_INFO, (uptr_t)boot_stack_top);
+  log_str(LOG_LEVEL_INFO, ")");
+  log_line_end(LOG_LEVEL_DEBUG);
+
+  _init_stack_memory(boot_stack_top, boot_stack_bottom);
 }

@@ -17,4 +17,7 @@ void mm_early_init(const byte_t *kernel_elf_info,
 
 void mm_init(void);
 
+uptr_t mm_vadd_stack_bp_bottom_get(void);
+uptr_t mm_vadd_stack_bp_top_get(void);
+
 #endif

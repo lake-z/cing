@@ -3,6 +3,6 @@
 
 #include "base.h"
 
-void kernal_main(u64_t addr);
+void kernal_main(u64_t info, u64_t stack);
 
 #endif
