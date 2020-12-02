@@ -5,8 +5,6 @@
 #include "kernel_panic.h"
 
 /* Forwarded declarations */
-typedef enum { IDT_GATE_TYPE_INTERRUPT, IDT_GATE_TYPE_TRAP } idt_gate_type_t;
-
 extern void isr0(void);
 extern void isr1(void);
 extern void isr2(void);
@@ -264,6 +262,16 @@ extern void isr252(void);
 extern void isr253(void);
 extern void isr254(void);
 extern void isr255(void);
+
+/* There are basically two kinds of code execution interruption: when it is
+ * caused by a faulty instruction, or when it caused by an unrelated event.
+ * In the first case we must save the address of the CURRENT faulting
+ * instruction so that we can retry. These are called "traps". The second case
+ * could be caused by an IRQ, or by using an "int" instruction, and here we
+ * must return to the NEXT instruction. Another difference is, that with traps
+ * new interrupts might occur. However when the CPU is serving an IRQ, further
+ * interrupts must be masked.  */
+typedef enum { IDT_GATE_TYPE_INTERRUPT, IDT_GATE_TYPE_TRAP } idt_gate_type_t;
 
 #define IDT_GATE_LEN 16
 #define IDT_GATE_COUNT 256
