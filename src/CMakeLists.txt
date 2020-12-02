@@ -76,9 +76,14 @@ set(FLAGS_COMPILE_WARNINGS
   -Wwrite-strings
 )
 
-set(FLAGS_COMPILE_DEBUG -O0 -fno-common -fno-omit-frame-pointer -ggdb3)
+if(BUILD_DEBUG_ENABLED)
+  set(FLAGS_COMPILE -O0 -fno-common -fno-omit-frame-pointer -ggdb3)
+else()
+  set(FLAGS_COMPILE -O3 -fno-common)
+endif(BUILD_DEBUG_ENABLED)
+
 target_compile_options(kernel PRIVATE ${FLAGS_COMPILE_KERNEL}
-  ${FLAGS_COMPILE_WARNINGS} ${FLAGS_COMPILE_DEBUG}
+  ${FLAGS_COMPILE_WARNINGS} ${FLAGS_COMPILE}
 )
 
 target_include_directories(kernel PRIVATE
