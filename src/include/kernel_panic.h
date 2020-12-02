@@ -10,6 +10,12 @@
     }                                                                          \
   } while (0)
 
+#ifdef BUILD_DEBUG_ENABLED
+#define kernel_assert_d(expr) kernel_assert(expr)
+#else
+#define kernel_assert_d(expr) expr
+#endif
+
 base_no_return _kernel_assert_fail(
     const char *expr, const char *file, usz_t line);
 

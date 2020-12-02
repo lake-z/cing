@@ -79,9 +79,11 @@ base_private tab_entry_index_t _vadd_tab_index(uptr_t va, tab_level_t level);
 base_private bo_t _direct_access_is_reset(void);
 base_private usz_t _vadd_page_offset(uptr_t va, tab_level_t lv);
 
-/* Builtin tests declarations */
+/* Built-in tests declarations */
+#ifdef BUILD_BUILTIN_TEST_ENABLED
 base_private byte_t _test_direct_access_bytes[PAGE_SIZE_4K] base_align(
     _PAGE_SIZE_4K);
+#endif
 
 base_private void _tlb_flush(vptr_t va)
 {
@@ -530,6 +532,7 @@ base_private bo_t _direct_access_is_reset(void)
   return present == false;
 }
 
+#ifdef BUILD_BUILTIN_TEST_ENABLED
 base_private void _test_direct_access(void)
 {
   log_line_start(LOG_LEVEL_DEBUG);
@@ -548,6 +551,7 @@ base_private void _test_direct_access(void)
   log_str(LOG_LEVEL_DEBUG, "Pass.");
   log_line_end(LOG_LEVEL_DEBUG);
 }
+#endif
 
 void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
 {
@@ -608,7 +612,7 @@ void mm_page_init(uptr_t kernel_start, uptr_t kernel_end, uptr_t boot_stack_bott
 
   _init_direct_access();
 
-#ifdef BUILD_TEST_MODE_ENABLED
+#ifdef BUILD_BUILTIN_TEST_ENABLED
   _test_direct_access();
 #endif
 

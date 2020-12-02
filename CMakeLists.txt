@@ -5,24 +5,24 @@ cmake_minimum_required(VERSION 3.8)
 project(cing LANGUAGES C CXX ASM)
 
 # Process all build options.
-if(NOT BUILD_TOOL_NASM)
-  set(BUILD_TOOL_NASM nasm)
+if(NOT TOOL_NASM)
+  set(TOOL_NASM nasm)
 endif()
-message("${CMAKE_CURRENT_SOURCE_DIR}: Assembler: ${BUILD_TOOL_NASM}")
+message("${CMAKE_CURRENT_SOURCE_DIR}: Assembler: ${TOOL_NASM}")
 
-if(NOT BUILD_TOOL_GRUB_RESCURE)
-  set(BUILD_TOOL_GRUB_RESCURE grub2-mkrescure)
+if(NOT TOOL_GRUB_RESCURE)
+  set(TOOL_GRUB_RESCURE grub2-mkrescure)
 endif()
 message("${CMAKE_CURRENT_SOURCE_DIR}: \
-GRUB mkrescure: ${BUILD_TOOL_GRUB_RESCURE}")
+GRUB mkrescure: ${TOOL_GRUB_RESCURE}")
 
-if(BUILD_TOOL_CLANG)
-  set(BUILD_TOOL_CLANG_TIDY ${BUILD_TOOL_CLANG}/bin/clang-tidy)
-  set(BUILD_TOOL_CLANG_FORMAT ${BUILD_TOOL_CLANG}/bin/clang-format)
+if(TOOL_CLANG)
+  set(TOOL_CLANG_TIDY ${TOOL_CLANG}/bin/clang-tidy)
+  set(TOOL_CLANG_FORMAT ${TOOL_CLANG}/bin/clang-format)
   message("${CMAKE_CURRENT_SOURCE_DIR}: Using clang-tidy: \
-${BUILD_TOOL_CLANG_TIDY}")
+${TOOL_CLANG_TIDY}")
   message("${CMAKE_CURRENT_SOURCE_DIR}: Using clang-format: \
-${BUILD_TOOL_CLANG_FORMAT}")
+${TOOL_CLANG_FORMAT}")
 else()
   message("${CMAKE_CURRENT_SOURCE_DIR}: No clang tools avaliable")
 endif()
@@ -34,16 +34,20 @@ set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_LINKER>  <FLAGS> <CMAKE_C_LINK_FLAGS> \
 
 option(BUILD_DEBUG_ENABLED "Enable debug codes or not" ON)
 message("${CMAKE_CURRENT_SOURCE_DIR}: Debug enabled: ${BUILD_DEBUG_ENABLED}")
+if(BUILD_DEBUG_ENABLED)
+  ADD_COMPILE_DEFINITIONS(BUILD_DEBUG_ENABLED)
+endif(BUILD_DEBUG_ENABLED)
+
+option(BUILD_BUILTIN_TEST_ENABLED "Enable test mode or not" ON)
+message("${CMAKE_CURRENT_SOURCE_DIR}: Built-in tests enabled: ${BUILD_BUILTIN_TEST_ENABLED}")
+if(BUILD_BUILTIN_TEST_ENABLED)
+ADD_COMPILE_DEFINITIONS(BUILD_BUILTIN_TEST_ENABLED)
+endif(BUILD_BUILTIN_TEST_ENABLED)
 
 execute_process(COMMAND git log --pretty=format:"%h" -n 1
   OUTPUT_VARIABLE BUILD_GIT_REVISION ERROR_QUIET)
 add_compile_definitions(BUILD_GIT_REVISION=${BUILD_GIT_REVISION})
 message("${CMAKE_CURRENT_SOURCE_DIR}: Git revision: ${BUILD_GIT_REVISION}")
-
-option(BUILD_OPT_TEST_MODE_ENABLE "Enable test mode or not" OFF)
-if(BUILD_OPT_TEST_MODE_ENABLE)
-  ADD_COMPILE_DEFINITIONS(BUILD_TEST_MODE_ENABLED)
-endif()
 
 add_subdirectory(src)
 

@@ -140,13 +140,15 @@ base_private base_no_return _kernel_halt(void)
 
 base_private void _test_stack_overflow(void)
 {
-  u64_t stack_data[1000];
+  byte_t stack_data[1000];
 
     log_line_start(LOG_LEVEL_DEBUG);
     log_str(LOG_LEVEL_DEBUG, "stack at: ");
     log_uint_of_size(LOG_LEVEL_DEBUG, (uptr_t)stack_data);
     log_line_end(LOG_LEVEL_DEBUG);
-    _test_stack_overflow();
+    if (((uptr_t)stack_data - 2048) > mm_vadd_stack_bp_top_get()) {
+      _test_stack_overflow();
+    } 
 }
 
 void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
@@ -193,10 +195,6 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
 
   mm_init();
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "kernel_prototype ended.");
-  log_line_end(LOG_LEVEL_INFO);
-
   uptr_t rbp;
   uptr_t rsp;
   u64_t rbp_off;
@@ -242,5 +240,10 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
   __asm__("movq %0, %%rsp" : /* no output */ : "r"(new_rsp));
   _test_stack_overflow();
 
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "kernel_prototype ended.");
+  log_line_end(LOG_LEVEL_INFO);
+
+  kernel_assert_d(false);
   _kernel_halt();
 }
