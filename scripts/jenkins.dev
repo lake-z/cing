@@ -1,6 +1,8 @@
 properties([
     parameters([
-        string(defaultValue: '/home/t4/wanghu/os/install/bin/nasm', description: 'cmake home', name: 'TOOL_NASM'),
+        string(defaultValue: '/home/t4/wanghu/os/install/bin/nasm', description: 'nasm', name: 'TOOL_NASM'),
+        string(defaultValue: '/usr/local/gcc-histore', description: 'gcc', name: 'TOOL_GCC'),
+        string(defaultValue: '/usr/local/histore-clang', description: 'clang', name: 'TOOL_CLANG'),
         gitParameter(
             branch: '',
             branchFilter: 'origin/(.*)',
@@ -21,5 +23,15 @@ node {
         deleteDir()
         echo "build branch: ${params.BRANCH}"
         echo "TOOL_NASM: ${params.TOOL_NASM}"
+    }
+    stage('build'){
+        git credentialsId: 'github_pass', branch: "${params.BRANCH}", url: 'https://github.com/lake-z/cing.git'
+        dir('build') {
+            withEnv(["CC=${params.TOOL_GCC}/bin/gcc", "CXX=${params.TOOL_GCC}/bin/g++"]) {
+                def build_dir = pwd()
+                sh script: "cmake -DTOOL_NASM=${params.TOOL_NASM} -DTOOL_CLANG=${params.TOOL_CLANG}  .."
+                sh script: 'make -j VERBOSE=1'
+            }
+        }
     }
 }
