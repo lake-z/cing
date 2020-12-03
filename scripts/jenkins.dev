@@ -41,7 +41,6 @@ node {
                 try {
                     sh script: "timeout 60s ${params.TOOL_QEMU}/bin/qemu-system-x86_64 -cdrom cing.iso -m 5G -serial stdio -d int -no-shutdown -no-reboot > jks_log.console 2>&1"
                 } finally {
-                    sh script: "killall -9 qemu-system-x86_64"
                     // sh script: "${params.TOOL_LCOV_HOME}/bin/lcov --capture  --gcov-tool=${TOOL_GCC_HOME}/bin/gcov  --rc lcov_branch_coverage=1 --directory ./ --output-file coverage.info"
                     // archiveArtifacts 'coverage.htm.tar.gz'
                     archiveArtifacts allowEmptyArchive: true, artifacts: '**/jks_log.*'
