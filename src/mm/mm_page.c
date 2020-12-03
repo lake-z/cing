@@ -3,10 +3,8 @@
 #include "log.h"
 #include "mm_private.h"
 
-#define _PAGE_SIZE_4K 4096
-
 typedef enum {
-  PAGE_SIZE_4K = _PAGE_SIZE_4K,
+  PAGE_SIZE_4K = PAGE_SIZE_VALUE_4K,
   PAGE_SIZE_2M = 2 * 1024 * 1024,
   PAGE_SIZE_1G = 1024 * 1024 * 1024,
 } page_size_t;
@@ -39,29 +37,10 @@ typedef struct {
   bo_t no_exe : 1;
 } base_struct_packed tab_entry_t;
 
-/* Virtual address layout of kernel
- * --------
- * [*] Low memory that's never used
- * [*] kernel_start .. kernel_end is a direct mapping
- * [*] kernel_end .. VADD_48_LOW_END , the heap
- * [*] VADD_48_HIGH_START .. VADD_48_HIGH_START + 256 pages, the stack
- * [*] VADD_48_HIGH_START + 256 pages .. VADD_48_HIGH_START + 257 pages,
- *      the temporary direct access page 
- */
-#define _VADD_LOW_START u64_literal(0)
-#define _VADD_48_LOW_END u64_literal(0x00007fffffffffff)
-#define _VADD_48_HIGH_START u64_literal(0xffff800000000000)
-#define _VADD_HIGH_END u64_literal(0xffffffffffffffff)
-#define _VADD_DIRECT_ACCESS_PAGE _VADD_48_HIGH_START + 256 * _PAGE_SIZE_4K
-
-base_private const uptr_t _VADD_STACK_BP_BOTTOM_GUARD = _VADD_48_HIGH_START + 255 * PAGE_SIZE_4K;
-base_private const uptr_t _VADD_STACK_BP_BOTTOM = _VADD_48_HIGH_START + 254 * PAGE_SIZE_4K;
-base_private const uptr_t _VADD_STACK_BP_TOP = _VADD_48_HIGH_START + 1 * PAGE_SIZE_4K;
-base_private const uptr_t _VADD_STACK_BP_TOP_GUARD = _VADD_48_HIGH_START;
-
 #define _TAB_ENTRY_LEN 8
 #define _TAB_ENTRY_COUNT 512
-base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(_PAGE_SIZE_4K);
+base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(
+    PAGE_SIZE_VALUE_4K);
 
 base_private uptr_t _early_map_end;
 
@@ -70,7 +49,7 @@ base_private vptr_t _direct_vadd;
  * level 3..1 table entries here  */
 base_private
     byte_t _direct_tab_space[_TAB_ENTRY_LEN * _TAB_ENTRY_COUNT * 3] base_align(
-        _PAGE_SIZE_4K);
+        PAGE_SIZE_VALUE_4K);
 base_private tab_entry_t *_direct_tab[3];
 base_private tab_entry_t *_direct_tab_entry;
 
@@ -82,7 +61,7 @@ base_private usz_t _vadd_page_offset(uptr_t va, tab_level_t lv);
 /* Built-in tests declarations */
 #ifdef BUILD_BUILTIN_TEST_ENABLED
 base_private byte_t _test_direct_access_bytes[PAGE_SIZE_4K] base_align(
-    _PAGE_SIZE_4K);
+    PAGE_SIZE_VALUE_4K);
 #endif
 
 base_private void _tlb_flush(vptr_t va)
@@ -140,7 +119,7 @@ base_private void _tab_entry_init(tab_entry_t *e,
   }
 
   kernel_assert(mm_align_check(padd, padd_size));
-  kernel_assert(padd <= _VADD_48_LOW_END || padd >= _VADD_48_HIGH_START);
+  kernel_assert(padd <= VADD_48_LOW_END || padd >= VADD_48_HIGH_START);
 
   (*(u64_t *)e) = padd;
   if (present) {
@@ -233,7 +212,7 @@ base_private bo_t _map_early(uptr_t va, uptr_t pa)
   return ok;
 }
 
-base_private bo_t _map(uptr_t va, uptr_t pa)
+bo_t mm_page_map(uptr_t va, uptr_t pa)
 {
   uptr_t tab_pa;
   tab_entry_t *tab_va;
@@ -453,12 +432,12 @@ bo_t vadd_get_padd(vptr_t va, uptr_t *out_pa)
 
 uptr_t mm_vadd_stack_bp_bottom_get(void)
 {
-  return _VADD_STACK_BP_BOTTOM;
+  return VADD_STACK_BP_BOTTOM;
 }
 
 uptr_t mm_vadd_stack_bp_top_get(void)
 {
-  return _VADD_STACK_BP_TOP;
+  return VADD_STACK_BP_TOP;
 }
 
 base_private void _init_direct_access(void)
@@ -467,7 +446,7 @@ base_private void _init_direct_access(void)
   tab_entry_index_t en_idx;
   tab_entry_t *en;
 
-  _direct_vadd = (vptr_t)(_VADD_DIRECT_ACCESS_PAGE);
+  _direct_vadd = (vptr_t)(VADD_DIRECT_ACCESS_PAGE);
   kernel_assert(mm_align_check((uptr_t)_direct_tab, PAGE_SIZE_4K));
 
   for (usz_t i = 0; i < 3; i++) {
@@ -578,18 +557,20 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
   _tab_root_load(_tab_4);
 }
 
-base_private void _init_stack_memory(uptr_t boot_stack_top, uptr_t boot_stack_bottom)
+base_private void _init_stack_memory(
+    uptr_t boot_stack_top, uptr_t boot_stack_bottom)
 {
   u64_t stack_position;
   usz_t stack_len;
 
-  for (uptr_t page = _VADD_STACK_BP_TOP; page <= _VADD_STACK_BP_BOTTOM; page += PAGE_SIZE_4K) {
+  for (uptr_t page = VADD_STACK_BP_TOP; page <= VADD_STACK_BP_BOTTOM;
+       page += PAGE_SIZE_4K) {
     uptr_t frame_pa;
     bo_t ok = mm_frame_get(&frame_pa);
 
     kernel_assert(ok == true);
 
-    _map(page, frame_pa);
+    mm_page_map(page, frame_pa);
   }
 
   kernel_assert(mm_align_check(boot_stack_bottom, PAGE_SIZE_4K));
@@ -599,11 +580,14 @@ base_private void _init_stack_memory(uptr_t boot_stack_top, uptr_t boot_stack_bo
 
   stack_len = boot_stack_bottom - (uptr_t)&stack_position;
   kernel_assert(stack_len < PAGE_SIZE_4K);
-  mm_copy((byte_t *)(_VADD_STACK_BP_BOTTOM - stack_len), (byte_t *)&stack_position, stack_len);
-
+  mm_copy((byte_t *)(VADD_STACK_BP_BOTTOM - stack_len),
+      (byte_t *)&stack_position, stack_len);
 }
 
-void mm_page_init(uptr_t kernel_start, uptr_t kernel_end, uptr_t boot_stack_bottom, uptr_t boot_stack_top)
+void mm_page_init(uptr_t kernel_start,
+    uptr_t kernel_end,
+    uptr_t boot_stack_bottom,
+    uptr_t boot_stack_top)
 {
   uptr_t unmap;
   uptr_t phy_end = padd_end();

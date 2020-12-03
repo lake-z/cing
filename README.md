@@ -30,5 +30,12 @@ symbol-file kernel.sym
 ## cmake
 
 ```
-cmake .. -DTOOL_NASM=/home/t4/wanghu/os/install/bin/nasm -DBUILD_BUILTIN_TEST_ENABLED=ON
+cmake .. -DTOOL_NASM=/home/t4/wanghu/os/install/bin/nasm -DBUILD_BUILTIN_TEST_ENABLED=OFF
+cmake .. -DTOOL_NASM=/home/t4/wanghu/os/install/bin/nasm -DTOOL_CLANG=/usr/local/histore-clang
+```
+
+## clang
+
+```
+/usr/local/histore-clang/bin/clang-format -style=file -fallback-style=none -sort-includes -i src/kernel/*.c
 ```

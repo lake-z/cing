@@ -145,7 +145,8 @@ void mm_early_init(const byte_t *kernel_elf_info,
 void mm_init(void)
 {
   mm_frame_init();
-  mm_page_init(_kernel_start, _kernel_end, (uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
+  mm_page_init(_kernel_start, _kernel_end, (uptr_t)&boot_stack_bottom,
+      (uptr_t)&boot_stack_top);
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "mm initialize finished, ");

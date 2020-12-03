@@ -33,6 +33,7 @@ set(SRC_MODULES
   log
   mm
   panel
+  util
   include
 )
 foreach(MOD ${SRC_MODULES})

@@ -1,7 +1,7 @@
-#include "boot.h"
-#include "cpu.h"
 #include "kernel_main.h"
+#include "boot.h"
 #include "containers_string.h"
+#include "cpu.h"
 #include "drivers_acpi.h"
 #include "drivers_keyboard.h"
 #include "drivers_port.h"
@@ -142,13 +142,13 @@ base_private void _test_stack_overflow(void)
 {
   byte_t stack_data[1000];
 
-    log_line_start(LOG_LEVEL_DEBUG);
-    log_str(LOG_LEVEL_DEBUG, "stack at: ");
-    log_uint_of_size(LOG_LEVEL_DEBUG, (uptr_t)stack_data);
-    log_line_end(LOG_LEVEL_DEBUG);
-    if (((uptr_t)stack_data - 2048) > mm_vadd_stack_bp_top_get()) {
-      _test_stack_overflow();
-    } 
+  log_line_start(LOG_LEVEL_DEBUG);
+  log_str(LOG_LEVEL_DEBUG, "stack at: ");
+  log_uint_of_size(LOG_LEVEL_DEBUG, (uptr_t)stack_data);
+  log_line_end(LOG_LEVEL_DEBUG);
+  if (((uptr_t)stack_data - 2048) > mm_vadd_stack_bp_top_get()) {
+    _test_stack_overflow();
+  }
 }
 
 void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
@@ -205,8 +205,8 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
   uptr_t curr_stack_bottom = (uptr_t)&boot_stack_bottom;
   usz_t curr_stack_len;
 
-  __asm__("movq %%rbp, %0" : "=r"(rbp) : );
-  __asm__("movq %%rsp, %0" : "=r"(rsp) : );
+  __asm__("movq %%rbp, %0" : "=r"(rbp) :);
+  __asm__("movq %%rsp, %0" : "=r"(rsp) :);
 
   rbp_off = (curr_stack_bottom - rbp);
   rsp_off = (curr_stack_bottom - rsp);
@@ -234,7 +234,8 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
   log_line_end(LOG_LEVEL_INFO);
 
   curr_stack_len = curr_stack_bottom - curr_stack_top;
-  mm_copy((byte_t *)(mm_vadd_stack_bp_bottom_get() - curr_stack_len), (byte_t *)curr_stack_top, curr_stack_len);
+  mm_copy((byte_t *)(mm_vadd_stack_bp_bottom_get() - curr_stack_len),
+      (byte_t *)curr_stack_top, curr_stack_len);
 
   __asm__("movq %0, %%rbp" : /* no output */ : "r"(new_rbp));
   __asm__("movq %0, %%rsp" : /* no output */ : "r"(new_rsp));
@@ -244,6 +245,5 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
   log_str(LOG_LEVEL_INFO, "kernel_prototype ended.");
   log_line_end(LOG_LEVEL_INFO);
 
-  kernel_assert_d(false);
   _kernel_halt();
 }
