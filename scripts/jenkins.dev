@@ -1,0 +1,25 @@
+properties([
+    parameters([
+        string(defaultValue: '/home/t4/wanghu/os/install/bin/nasm', description: 'cmake home', name: 'TOOL_NASM'),
+        gitParameter(
+            branch: '',
+            branchFilter: 'origin/(.*)',
+            defaultValue: 'master',
+            description: '',
+            name: 'BRANCH',
+            quickFilterEnabled: false,
+            selectedValue: 'NONE',
+            sortMode: 'NONE',
+            tagFilter: '*',
+            type: 'PT_BRANCH'
+       )
+   ])
+])
+
+node {
+    stage('clean up'){
+        deleteDir()
+        echo "build branch: ${params.BRANCH}"
+        echo "TOOL_NASM: ${params.TOOL_NASM}"
+    }
+}
