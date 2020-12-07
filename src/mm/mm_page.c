@@ -58,10 +58,12 @@ base_private tab_entry_index_t _vadd_tab_index(uptr_t va, tab_level_t level);
 base_private bo_t _direct_access_is_reset(void);
 base_private usz_t _vadd_page_offset(uptr_t va, tab_level_t lv);
 
-/* Built-in tests declarations */
 #ifdef BUILD_BUILTIN_TEST_ENABLED
+/* Built-in tests declarations */
 base_private byte_t _test_direct_access_bytes[PAGE_SIZE_4K] base_align(
     PAGE_SIZE_VALUE_4K);
+base_private void _test_direct_access(void);
+base_private void _test_paging(void);
 #endif
 
 base_private void _tlb_flush(vptr_t va)
@@ -135,7 +137,7 @@ base_private void _tab_entry_init(tab_entry_t *e,
 
 base_private void _tab_zero(tab_entry_t *entry)
 {
-  mm_clean(entry, sizeof(_TAB_ENTRY_LEN * _TAB_ENTRY_COUNT));
+  mm_clean(entry, _TAB_ENTRY_LEN * _TAB_ENTRY_COUNT);
 }
 
 base_private bo_t _tab_is_zero(tab_entry_t *entry)
@@ -232,8 +234,8 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
   tab_pa = (uptr_t)_tab_4;
   frame_pa = UPTR_NULL;
   for (lv = TAB_LEVEL_4; lv > TAB_LEVEL_1; lv--) {
-    /* Allocate free frame at very begin, to avoid the need of more than 1 
-      * direct access at the same time. */
+    /* Allocate free frame at very begin, to avoid the need of more than 1
+     * direct access at the same time. */
     if (frame_pa == UPTR_NULL) {
       ok = mm_frame_get(&frame_pa);
       if (!ok) {
@@ -241,10 +243,12 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
       } else {
         frame_va = mm_page_direct_access_setup(frame_pa);
         _tab_zero((tab_entry_t *)frame_va);
+
         frame_va = NULL;
         mm_page_direct_access_reset();
       }
     }
+
 
     tab_va = mm_page_direct_access_setup(tab_pa);
     entry_idx = _vadd_tab_index(va, lv);
@@ -254,6 +258,7 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
     if (!present) {
       kernel_assert(_tab_entry_is_zero(entry));
       kernel_assert(frame_pa != UPTR_NULL);
+
       _tab_entry_init(entry, lv, true, true, frame_pa, PAGE_SIZE_4K);
       frame_pa = UPTR_NULL;
     }
@@ -270,8 +275,16 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
     tab_va = mm_page_direct_access_setup(tab_pa);
     entry_idx = _vadd_tab_index(va, TAB_LEVEL_1);
     entry = &(tab_va[entry_idx]);
+
     kernel_assert(_tab_entry_is_zero(entry));
     _tab_entry_init(entry, lv, true, true, (uptr_t)pa, PAGE_SIZE_4K);
+    mm_page_direct_access_reset();
+  }
+
+  if (frame_pa != UPTR_NULL) {
+    frame_va = mm_page_direct_access_setup(frame_pa);
+    mm_frame_return(frame_va, frame_pa);
+    frame_va = NULL;
     mm_page_direct_access_reset();
   }
 
@@ -291,7 +304,6 @@ base_private uptr_t _unmap(uptr_t va, page_size_t size)
 
   kernel_assert(mm_align_check(va, size));
 
-  _tlb_flush((vptr_t)va);
 
   /* Traverse page tables find out page table tree nodes pointing to the given 
    * virtual address. */
@@ -373,6 +385,8 @@ base_private uptr_t _unmap(uptr_t va, page_size_t size)
     entry_va_tmp = NULL;
     mm_page_direct_access_reset();
   }
+
+  _tlb_flush((vptr_t)va);
 
   return pa;
 }
@@ -511,27 +525,6 @@ base_private bo_t _direct_access_is_reset(void)
   return present == false;
 }
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
-base_private void _test_direct_access(void)
-{
-  log_line_start(LOG_LEVEL_DEBUG);
-  log_str(LOG_LEVEL_DEBUG, __FUNCTION__);
-  log_str(LOG_LEVEL_DEBUG, " started..");
-  log_line_end(LOG_LEVEL_DEBUG);
-
-  for (usz_t i = 0; i < PAGE_SIZE_4K; i++) {
-    byte_t *va = mm_page_direct_access_setup((uptr_t)_test_direct_access_bytes);
-    _test_direct_access_bytes[i] = 0xFE;
-    kernel_assert(va[i] == 0xFE);
-    mm_page_direct_access_reset();
-  }
-
-  log_line_start(LOG_LEVEL_DEBUG);
-  log_str(LOG_LEVEL_DEBUG, "Pass.");
-  log_line_end(LOG_LEVEL_DEBUG);
-}
-#endif
-
 void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
 {
   uptr_t va;
@@ -625,4 +618,48 @@ void mm_page_init(uptr_t kernel_start,
   log_line_end(LOG_LEVEL_DEBUG);
 
   _init_stack_memory(boot_stack_top, boot_stack_bottom);
+
+#ifdef BUILD_BUILTIN_TEST_ENABLED
+  _test_paging();
+#endif
 }
+
+#ifdef BUILD_BUILTIN_TEST_ENABLED
+/* Built-in tests*/
+
+base_private void _test_direct_access(void)
+{
+  for (usz_t i = 0; i < PAGE_SIZE_4K; i++) {
+    byte_t *va = mm_page_direct_access_setup((uptr_t)_test_direct_access_bytes);
+    _test_direct_access_bytes[i] = 0xFE;
+    kernel_assert(va[i] == 0xFE);
+    mm_page_direct_access_reset();
+  }
+
+  log_builtin_test_pass();
+}
+
+base_private void _test_paging(void)
+{
+  uptr_t va_start = mm_align_up(0xffffffbabeface00, PAGE_SIZE_4K);
+  ucnt_t free_frames = mm_frame_free_count();
+
+  for(usz_t i = 0; i < 10000; i++) {
+    uptr_t va = va_start + i * PAGE_SIZE_4K;
+    uptr_t frame_pa;
+    bo_t ok = mm_frame_get(&frame_pa);
+    kernel_assert(ok == true);
+    mm_page_map(va, frame_pa);
+  }
+
+  for(usz_t i = 10000; i > 0; i--) {
+    uptr_t va = va_start + (i - 1) * PAGE_SIZE_4K;
+    _unmap(va, PAGE_SIZE_4K);
+  }
+
+  kernel_assert(free_frames == mm_frame_free_count());
+
+  log_builtin_test_pass();
+}
+
+#endif

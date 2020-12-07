@@ -34,7 +34,7 @@ base_private bo_t _is_early_stage;
 /* Physical address of the head of free frame list.
  * Every 4K frame can be cast to frame_free_t and linked with next pointer. */
 base_private uptr_t _free_head;
-base_private u64_t _free_count;
+base_private ucnt_t _free_count;
 
 base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
 {
@@ -172,7 +172,7 @@ void mm_frame_return(byte_t *frame_va, uptr_t frame_pa)
   _free_count++;
 }
 
-u64_t mm_frame_free_count(void)
+ucnt_t mm_frame_free_count(void)
 {
   return _free_count;
 }

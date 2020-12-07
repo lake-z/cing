@@ -4,6 +4,9 @@
 #include "log.h"
 #include "mm_private.h"
 
+/* Built-in tests */
+#include "mm_builtin_tests.c"
+
 /* @see
  * https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#Section_header
  */
@@ -147,6 +150,7 @@ void mm_init(void)
   mm_frame_init();
   mm_page_init(_kernel_start, _kernel_end, (uptr_t)&boot_stack_bottom,
       (uptr_t)&boot_stack_top);
+  mm_heap_init();
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "mm initialize finished, ");
@@ -154,3 +158,10 @@ void mm_init(void)
   log_str(LOG_LEVEL_INFO, " free frames available. ");
   log_line_end(LOG_LEVEL_INFO);
 }
+
+#ifdef BUILD_BUILTIN_TEST_ENABLED
+void mm_builtin_tests()
+{
+  _test_heap();
+}
+#endif

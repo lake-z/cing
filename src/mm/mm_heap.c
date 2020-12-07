@@ -1,15 +1,19 @@
 #include "kernel_panic.h"
 #include "mm_private.h"
 #include "util.h"
+#include "log.h"
 
 #define _BLOCK_MAX_CLASS 16
 
-typedef struct block_free block_free_t;
-struct block_free {
-  block_free_t *next;
-};
+typedef struct block block_t;
+typedef struct block {
+  u8_t class;
+  bo_t is_free;
+  block_t *next_free;
+  u32_t magic;
+} block_t;
 
-base_private block_free_t *_free_list[_BLOCK_MAX_CLASS];
+base_private block_t *_free_list[_BLOCK_MAX_CLASS];
 base_private uptr_t _heap_end;
 
 void mm_heap_init(void)
@@ -26,6 +30,103 @@ base_private u64_t _size_of_class(usz_t class)
   return util_math_2_exp((u8_t) class) * PAGE_SIZE_VALUE_4K;
 }
 
+base_private void _block_init(
+    block_t *block, u8_t class, bo_t free, block_t *next)
+{
+  kernel_assert_d(mm_align_check((uptr_t)block, PAGE_SIZE_VALUE_4K));
+  block->class = class;
+  block->is_free = free;
+  block->next_free = next;
+  block->magic = 0xBABEFACE;
+}
+
+base_private void _block_verify(block_t *block)
+{
+  kernel_assert_d(mm_align_check((uptr_t)block, PAGE_SIZE_VALUE_4K));
+  kernel_assert_d(block->magic == 0xBABEFACE);
+}
+
+base_private byte_t *_block_check_out(block_t *block, usz_t *payload_len)
+{
+  kernel_assert_d(mm_align_check((uptr_t)block, PAGE_SIZE_VALUE_4K));
+  kernel_assert_d(block->class < _BLOCK_MAX_CLASS);
+  kernel_assert_d(block->is_free == true);
+  block->is_free = false;
+  usz_t len = _size_of_class(block->class);
+  (*payload_len) = len - sizeof(block_t);
+  return (byte_t *)(((uptr_t)block) + sizeof(block_t));
+}
+
+base_private block_t *_block_check_in(byte_t *block_user)
+{
+  block_t *block = (block_t *)((uptr_t)block_user - sizeof(block_t));
+  _block_verify(block);
+  kernel_assert_d(block->is_free == false);
+  block->is_free = true;
+  return block;
+}
+
+base_private block_t *_block_find_buddy(block_t *blk)
+{
+  u8_t class;
+  uptr_t blk_base;
+  usz_t blk_size;
+  uptr_t blk_offs;
+  uptr_t buddy_addr;
+  block_t *buddy_block;
+
+  kernel_assert_d(mm_align_check((uptr_t)blk, PAGE_SIZE_VALUE_4K));
+  class = blk->class;
+  blk_size = _size_of_class(class);
+
+  /* blk_base is the address of the original block allocated from paging system,
+     from which we do binary buddy splitting/coalescing */
+  blk_base = (uptr_t)blk - VADD_HEAP_START;
+  blk_base = mm_align_down(blk_base, _size_of_class(_BLOCK_MAX_CLASS - 1));
+  blk_offs = (uptr_t)blk - blk_base;
+  kernel_assert_d(mm_align_check(blk_offs, blk_size));
+
+  /* Binary buddy invariant: block offset to base should alwyas align with 
+     block size. */
+  if (mm_align_check(blk_offs - blk_size, blk_size * 2)) {
+    buddy_addr = blk_offs - blk_size;
+  } else {
+    kernel_assert_d(mm_align_check(blk_offs + blk_size, blk_size * 2));
+    buddy_addr = blk_offs + blk_size;
+  }
+  buddy_block = (block_t *)(buddy_addr + blk_base + VADD_HEAP_START);
+
+  /* Buddy meta must always be eixsted as we have already splitted. */
+  _block_verify(buddy_block);
+  return buddy_block;
+}
+
+base_private void _free_list_dequeue(block_t *block)
+{
+  block_t *free;
+  bo_t found;
+
+  _block_verify(block);
+
+  found = false;
+  free = _free_list[block->class];
+  while (free != NULL) {
+    if (free == block) {
+      kernel_assert_d(free == _free_list[block->class]);
+      _free_list[block->class] = block->next_free;
+      found = true;
+      break;
+    } else if (free->next_free == block) {
+      free->next_free = block->next_free;
+      found = true;
+      break;
+    } else {
+      free = free->next_free;
+    }
+  }
+  kernel_assert_d(found == true);
+}
+
 /*
 base_private u64_t _size_of_heap(void)
 {
@@ -33,11 +134,12 @@ base_private u64_t _size_of_heap(void)
 }
 */
 
+/* Always expand heap at a step of the same size */
 base_private bo_t _expand_heap(void)
 {
   u64_t size = _size_of_class(_BLOCK_MAX_CLASS - 1);
   uptr_t heap_add;
-  block_free_t *free;
+  block_t *free;
 
   kernel_assert_d(size > 0);
   kernel_assert_d((size % PAGE_SIZE_VALUE_4K) == 0);
@@ -47,12 +149,14 @@ base_private bo_t _expand_heap(void)
 
     kernel_assert_d(ok);
     kernel_assert_d(frame_pa != UPTR_NULL);
-    ok = mm_page_map(_heap_end + heap_add, frame_pa);
+
+   ok = mm_page_map(_heap_end + heap_add, frame_pa);
     kernel_assert_d(ok == true);
   }
 
-  free = (block_free_t *)_heap_end;
-  free->next = _free_list[_BLOCK_MAX_CLASS - 1];
+  free = (block_t *)_heap_end;
+  _block_init(
+      free, _BLOCK_MAX_CLASS - 1, true, _free_list[_BLOCK_MAX_CLASS - 1]);
   _free_list[_BLOCK_MAX_CLASS - 1] = free;
 
   _heap_end += size;
@@ -60,9 +164,10 @@ base_private bo_t _expand_heap(void)
   return true;
 }
 
-base_private bo_t _free_from(usz_t class)
+/* Split free block on given class, and insert the 2 buddies into lower class */
+base_private bo_t _split_from(usz_t class)
 {
-  block_free_t *free;
+  block_t *free;
   bo_t succ;
 
   kernel_assert_d(class < _BLOCK_MAX_CLASS);
@@ -71,7 +176,7 @@ base_private bo_t _free_from(usz_t class)
   free = _free_list[class];
   if (free == NULL) {
     if ((class + 1) < _BLOCK_MAX_CLASS) {
-      succ = _free_from(class + 1);
+      succ = _split_from(class + 1);
       if (succ) {
         free = _free_list[class];
         kernel_assert_d(free != NULL);
@@ -89,32 +194,63 @@ base_private bo_t _free_from(usz_t class)
 
   if (succ) {
     usz_t next_size = _size_of_class(class - 1);
+
     kernel_assert_d(free != NULL);
+    kernel_assert_d((free->class) == class);
     kernel_assert_d(_free_list[class - 1] == NULL);
-    free->next = _free_list[class - 1];
+
+    _block_init(free, (u8_t)(class - 1), true, _free_list[class - 1]);
     _free_list[class - 1] = free;
-    free = (block_free_t *)(((uptr_t)free) + next_size);
-    free->next = _free_list[class - 1];
+
+    free = (block_t *)(((uptr_t)free) + next_size);
+    _block_init(free, (u8_t)(class - 1), true, _free_list[class - 1]);
     _free_list[class - 1] = free;
   }
 
   return succ;
 }
 
+base_private void _coalescing_block(block_t *block)
+{
+  block_t *buddy;
+
+  _block_verify(block);
+  buddy = _block_find_buddy(block);
+  _block_verify(buddy);
+
+  if ((buddy->class == block->class) && (buddy->is_free)) {
+    _free_list_dequeue(buddy);
+
+    /* Destroy coalesced block meta */
+    if ((uptr_t)buddy < (uptr_t)block) {
+      mm_clean(block, sizeof(block_t));
+      block = buddy;
+    } else {
+      mm_clean(buddy, sizeof(block_t));
+    }
+
+    _block_init(block, (u8_t)(block->class + 1), true, NULL);
+    _coalescing_block(block);
+  } else {
+    _block_init(block, block->class, true, _free_list[block->class]);
+    _free_list[block->class] = block;
+  }
+}
+
 byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
 {
   usz_t free_class;
-  block_free_t *free;
+  block_t *free;
   bo_t ok;
 
   kernel_assert_d(len > 0);
   kernel_assert(len < _size_of_class(_BLOCK_MAX_CLASS - 1));
 
-  free_class = util_math_log_2_up(len);
+  free_class = util_math_log_2_up(len + sizeof(block_t));
   free = _free_list[free_class];
 
   if (free == NULL) {
-    ok = _free_from(free_class + 1);
+    ok = _split_from(free_class + 1);
     if (ok) {
       free = _free_list[free_class];
       kernel_assert_d(free != NULL);
@@ -124,11 +260,19 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
   }
 
   if (ok) {
+    kernel_assert_d(free->class == free_class);
     kernel_assert_d(free != NULL);
-    _free_list[free_class] = free->next;
-    *all_len = _size_of_class(free_class);
+    _free_list[free_class] = free->next_free;
+    free = (block_t *)_block_check_out(free, all_len);
   } else {
     kernel_assert_d(free == NULL);
   }
+
   return (byte_t *)free;
+}
+
+void mm_heap_free(byte_t *block_user)
+{
+  block_t *block = _block_check_in(block_user);
+  _coalescing_block(block);
 }

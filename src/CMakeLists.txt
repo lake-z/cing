@@ -88,7 +88,9 @@ target_compile_options(kernel PRIVATE ${FLAGS_COMPILE_KERNEL}
 )
 
 target_include_directories(kernel PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/builtin_tests
+)
 
 target_link_libraries(kernel PRIVATE
   ${CMAKE_CURRENT_BINARY_DIR}/multiboot_header.o

@@ -53,7 +53,7 @@ void mm_frame_return(
     uptr_t frame_pa   /* Physical address of the frame to be freed */
 );
 
-u64_t mm_frame_free_count(void);
+ucnt_t mm_frame_free_count(void);
 
 void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end);
 void mm_page_init(uptr_t kernel_start,
@@ -70,5 +70,6 @@ bo_t mm_page_map(uptr_t va, uptr_t pa);
 
 void mm_heap_init(void);
 byte_t *mm_heap_alloc(usz_t len, usz_t *all_len);
+void mm_heap_free(byte_t *block_user);
 
 #endif
