@@ -81,12 +81,15 @@ base_private block_t *_block_find_buddy(block_t *blk)
 
   kernel_assert_d(mm_align_check((uptr_t)blk, PAGE_SIZE_VALUE_4K));
   class = blk->class;
+  kernel_assert_d(class < _BLOCK_MAX_CLASS);
   blk_size = _size_of_class(class);
 
   /* blk_base is the address of the original block allocated from paging system,
      from which we do binary buddy splitting/coalescing */
   blk_base = (uptr_t)blk - VADD_HEAP_START;
   blk_base = mm_align_down(blk_base, _size_of_class(_BLOCK_MAX_CLASS - 1));
+
+  /* Block offset relative to base */
   blk_offs = (uptr_t)blk - VADD_HEAP_START - blk_base;
   kernel_assert_d(mm_align_check(blk_offs, blk_size));
 
@@ -156,7 +159,7 @@ base_private bo_t _free_list_is_empty(u8_t class)
   return _free_list[class] == NULL;
 }
 
-/* Initialize free block fields, and after that enqueue the corresponding 
+/* Initialize free block fields, and after that enqueue the corresponding
    free list. */
 base_private void _free_list_enqueue(block_t *free, u8_t class)
 {
@@ -245,29 +248,31 @@ base_private bo_t _split_from(u8_t class)
   return succ;
 }
 
-base_private void _coalescing_block(block_t *block)
+base_private block_t *_coalescing_block(block_t *block)
 {
   block_t *buddy;
 
   _block_validate(block);
-  buddy = _block_find_buddy(block);
 
-  if ((buddy->class == block->class) && (buddy->is_free)) {
-    _free_list_dequeue_block(buddy);
+  if (block->class < (_BLOCK_MAX_CLASS - 1)) {
+    buddy = _block_find_buddy(block);
+    if ((buddy->class == block->class) && (buddy->is_free)) {
+      _free_list_dequeue_block(buddy);
 
-    /* Destroy coalesced block meta */
-    if ((uptr_t)buddy < (uptr_t)block) {
-      mm_clean(block, sizeof(block_t));
-      block = buddy;
-    } else {
-      mm_clean(buddy, sizeof(block_t));
+      /* Destroy coalesced block meta */
+      if ((uptr_t)buddy < (uptr_t)block) {
+        mm_clean(block, sizeof(block_t));
+        block = buddy;
+      } else {
+        mm_clean(buddy, sizeof(block_t));
+      }
+
+      _block_init(block, (u8_t)(block->class + 1), true, NULL);
+      block = _coalescing_block(block);
     }
-
-    _block_init(block, (u8_t)(block->class + 1), true, NULL);
-    _coalescing_block(block);
-  } else {
-    _free_list_enqueue(block, block->class);
   }
+
+  return block;
 }
 
 byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
@@ -277,7 +282,8 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
   bo_t ok;
 
   kernel_assert_d(len > 0);
-  kernel_assert(len < _size_of_class(_BLOCK_MAX_CLASS - 1));
+  kernel_assert(
+      (len + sizeof(block_t)) <= _size_of_class(_BLOCK_MAX_CLASS - 1));
 
   free_class = (u8_t)util_math_log_2_up(len + sizeof(block_t));
   if (free_class <= PAGE_SIZE_VALUE_LOG_4K) {
@@ -285,6 +291,8 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
   } else {
     free_class = (u8_t)(free_class - PAGE_SIZE_VALUE_LOG_4K);
   }
+  kernel_assert(free_class < _BLOCK_MAX_CLASS);
+
   free = _free_list_dequeue(free_class);
 
   if (free == NULL) {
@@ -312,7 +320,8 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
 void mm_heap_free(byte_t *block_user)
 {
   block_t *block = _block_check_in(block_user);
-  _coalescing_block(block);
+  block = _coalescing_block(block);
+  _free_list_enqueue(block, block->class);
 }
 
 void mm_heap_init(void)
@@ -352,28 +361,54 @@ base_private void _test_verify_all_list_class(void)
   }
 }
 
-base_private void _test_basic_ops(void)
+base_private void _test_1_alloc_1_free(void)
 {
   usz_t all_size;
   byte_t *mem;
-  
-  mem = mm_heap_alloc(1, &all_size);
+  usz_t test_size[1024];
+  usz_t test_size_cnt = 0;
 
-  kernel_assert(mem != NULL);
-  kernel_assert(all_size >= 1);
+  test_size[test_size_cnt++] = 1;
+  test_size[test_size_cnt++] = 4096;
+  test_size[test_size_cnt++] = 10000;
+  test_size[test_size_cnt++] = 1024 * 1024;
+  test_size[test_size_cnt++] = 123 * 1024 * 1024;
+  test_size[test_size_cnt++] =
+      _size_of_class(_BLOCK_MAX_CLASS - 1) - sizeof(block_t);
 
-  mm_heap_free(mem);
+  for (usz_t test = 0; test < test_size_cnt; test++) {
+    mem = mm_heap_alloc(test_size[test], &all_size);
+
+    kernel_assert(mem != NULL);
+    kernel_assert(all_size >= test_size[test]);
+
+    mm_clean(mem, all_size);
+    mm_heap_free(mem);
+
+    for (u8_t class = 0; class < (_BLOCK_MAX_CLASS - 1); class ++) {
+      kernel_assert(_free_list[class] == NULL);
+    }
+    kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1] != NULL);
+    _block_validate(_free_list[_BLOCK_MAX_CLASS - 1]);
+    kernel_assert(
+        _free_list[_BLOCK_MAX_CLASS - 1]->class == (_BLOCK_MAX_CLASS - 1));
+    _heap_validate();
+  }
+
+  log_builtin_test_pass();
 }
 
 void test_heap(void)
 {
+  _test_1_alloc_1_free();
+  base_mark_unuse(_test_verify_all_list_class);
+
+  /*
   usz_t total;
   byte_t *mems[BYTE_MAX];
   usz_t mem_lens[BYTE_MAX];
   usz_t mems_cnt;
   usz_t mems_cap = 1;
-
-  _test_basic_ops();
 
   kernel_assert_d(mems_cap < BYTE_MAX);
 
@@ -425,5 +460,6 @@ void test_heap(void)
 
   _test_verify_all_list_class();
   log_builtin_test_pass();
+  */
 }
 #endif
