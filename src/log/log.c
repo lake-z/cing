@@ -17,8 +17,8 @@ base_private const u64_t _SIZE_UNITS[_SIZE_COUNT] = {
 base_private const ch_t *_SIZE_NOTES[_SIZE_COUNT] = { "ZB", "PB", "TB", "GB",
   "MB", "KB" };
 
-base_private const ch_t *_LINE_PREFIX_LEVEL[LOG_LEVEL_FATAL + 1] = { "[DBG]",
-  "[INF]", "[WRN]", "[ERR]", "[FAT]", "[BTE]" };
+base_private const ch_t *_LINE_PREFIX_LEVEL[LOG_LEVEL_FATAL + 1] = { "[BTE]",
+  "[DBG]", "[INF]", "[WRN]", "[ERR]", "[FAT]" };
 
 void log_str_len(log_level_t lv, const ch_t *str, usz_t len)
 {
