@@ -61,56 +61,56 @@ base_private const ch_t *_file_strip(const ch_t *file)
   uin_t score = 0;
 
   while (true) {
-    if(file[idx] == '0') {
+    if (file[idx] == '0') {
       break;
-    } 
-    
-    switch (score) {
-      case 0:
-        if(file[idx] == '/') {
-          score++;
-        } 
-        break;
-      case 1:
-        if(file[idx] == 's') {
-          score++;
-        } else {
-          score = 0;
-        }
-        break;
-      case 2:
-        if(file[idx] == 'r') {
-          score++;
-        } else {
-          score = 0;
-        }
-        break;
-      case 3:
-        if(file[idx] == 'c') {
-          score++;
-        } else {
-          score = 0;
-        }
-        break;
-      case 4:
-        if(file[idx] == '/') {
-          score++;
-        } else {
-          score = 0;
-        }
-        break;
-      case 5:
-        res = file + idx;
-        score++;
-        break;
-      default:
-        kernel_panic("Unreachable code.");
-        break;
     }
-    
+
+    switch (score) {
+    case 0:
+      if (file[idx] == '/') {
+        score++;
+      }
+      break;
+    case 1:
+      if (file[idx] == 's') {
+        score++;
+      } else {
+        score = 0;
+      }
+      break;
+    case 2:
+      if (file[idx] == 'r') {
+        score++;
+      } else {
+        score = 0;
+      }
+      break;
+    case 3:
+      if (file[idx] == 'c') {
+        score++;
+      } else {
+        score = 0;
+      }
+      break;
+    case 4:
+      if (file[idx] == '/') {
+        score++;
+      } else {
+        score = 0;
+      }
+      break;
+    case 5:
+      res = file + idx;
+      score++;
+      break;
+    default:
+      kernel_panic("Unreachable code.");
+      break;
+    }
+
     kernel_assert_d(score <= 6);
-    
-    if(score == 6) {
+
+    if (score == 6) {
       break;
     } else {
       idx++;
@@ -142,5 +142,3 @@ void _log_builtin_test_pass(const ch_t *test_name, const ch_t *file, usz_t line)
   log_str(LOG_LEVEL_BUILTIN_TEST, " .. Passed.");
   log_line_end(LOG_LEVEL_BUILTIN_TEST);
 }
-
-

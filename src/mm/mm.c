@@ -4,9 +4,6 @@
 #include "log.h"
 #include "mm_private.h"
 
-/* Built-in tests */
-#include "mm_builtin_tests.c"
-
 /* @see
  * https://en.wikipedia.org/wiki/Executable_and_Linkable_Format#Section_header
  */
@@ -160,8 +157,8 @@ void mm_init(void)
 }
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
-void mm_builtin_tests()
+void test_mm()
 {
-  _test_heap();
+  test_heap();
 }
 #endif

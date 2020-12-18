@@ -249,7 +249,6 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
       }
     }
 
-
     tab_va = mm_page_direct_access_setup(tab_pa);
     entry_idx = _vadd_tab_index(va, lv);
     entry = &(tab_va[entry_idx]);
@@ -303,7 +302,6 @@ base_private uptr_t _unmap(uptr_t va, page_size_t size)
   bo_t tab_empty;
 
   kernel_assert(mm_align_check(va, size));
-
 
   /* Traverse page tables find out page table tree nodes pointing to the given 
    * virtual address. */
@@ -644,7 +642,7 @@ base_private void _test_paging(void)
   uptr_t va_start = mm_align_up(0xffffffbabeface00, PAGE_SIZE_4K);
   ucnt_t free_frames = mm_frame_free_count();
 
-  for(usz_t i = 0; i < 10000; i++) {
+  for (usz_t i = 0; i < 10000; i++) {
     uptr_t va = va_start + i * PAGE_SIZE_4K;
     uptr_t frame_pa;
     bo_t ok = mm_frame_get(&frame_pa);
@@ -652,7 +650,7 @@ base_private void _test_paging(void)
     mm_page_map(va, frame_pa);
   }
 
-  for(usz_t i = 10000; i > 0; i--) {
+  for (usz_t i = 10000; i > 0; i--) {
     uptr_t va = va_start + (i - 1) * PAGE_SIZE_4K;
     _unmap(va, PAGE_SIZE_4K);
   }
@@ -661,5 +659,4 @@ base_private void _test_paging(void)
 
   log_builtin_test_pass();
 }
-
 #endif

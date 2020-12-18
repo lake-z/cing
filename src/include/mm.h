@@ -21,7 +21,8 @@ uptr_t mm_vadd_stack_bp_bottom_get(void);
 uptr_t mm_vadd_stack_bp_top_get(void);
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
-void mm_builtin_tests(void);
+/* Built-in tests declarations */
+void test_mm(void);
 #endif
 
 #endif

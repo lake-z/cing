@@ -3,6 +3,7 @@
 
 #include "mm.h"
 
+#define PAGE_SIZE_VALUE_LOG_4K 12
 #define PAGE_SIZE_VALUE_4K 4096
 
 /* Virtual address layout of kernel
@@ -71,5 +72,10 @@ bo_t mm_page_map(uptr_t va, uptr_t pa);
 void mm_heap_init(void);
 byte_t *mm_heap_alloc(usz_t len, usz_t *all_len);
 void mm_heap_free(byte_t *block_user);
+
+#ifdef BUILD_BUILTIN_TEST_ENABLED
+/* Built-in tests declarations */
+void test_heap(void);
+#endif
 
 #endif

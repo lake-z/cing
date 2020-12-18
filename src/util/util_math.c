@@ -5,7 +5,9 @@ u64_t util_math_log_2_up(u64_t val)
 {
   u64_t res;
 
-  kernel_assert_d(val > 0);
+  if (val == 0) {
+    return 1;
+  }
 
   res = 0;
   val--;

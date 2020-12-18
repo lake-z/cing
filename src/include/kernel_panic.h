@@ -16,6 +16,9 @@
 #define kernel_assert_d(expr) expr
 #endif
 
+#define kernel_expect(expr) kernel_assert_d(expr)
+#define kernel_ensure(expr) kernel_assert_d(expr)
+
 base_no_return _kernel_assert_fail(
     const char *expr, const char *file, usz_t line);
 

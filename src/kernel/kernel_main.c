@@ -244,7 +244,7 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
   _test_stack_overflow();
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
-  mm_builtin_tests();
+  test_mm();
 #endif
 
   log_line_start(LOG_LEVEL_INFO);
