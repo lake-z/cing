@@ -48,13 +48,12 @@ void acpi_init(const byte_t *multi_boot_info, usz_t len)
   u32_t rsdt_addr;
   u64_t byte_sum;
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "ACPI init, ");
-
   /* Multi boot info is pointing to a RSDP (Root System Description Pointer) */
   signature = (const ch_t *)ptr;
-  log_str(LOG_LEVEL_INFO, "signature: ");
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "ACPI signature: ");
   log_str_len(LOG_LEVEL_INFO, signature, 8);
+  log_line_end(LOG_LEVEL_INFO);
   ptr += 8;
 
   /* Checksum */
@@ -65,21 +64,26 @@ void acpi_init(const byte_t *multi_boot_info, usz_t len)
 
   revision = *(const u8_t *)ptr;
   ptr += 1;
-  kernel_assert(revision == 0); /* TODO: ACPI 2.0+ needs to be supported */
-
-  rsdt_addr = *(const u32_t *)ptr;
-  ptr += 4;
-  (void)rsdt_addr;
-
-  kernel_assert((ptr - (uptr_t)multi_boot_info) == len);
-
-  byte_sum = 0;
-  for (const byte_t *byte = multi_boot_info; (uptr_t)byte < ptr; byte++) {
-    byte_sum += *byte;
-  }
-  kernel_assert((byte_sum & 0xff) == 0); /* Validate check sum */
-
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "ACPI revision: ");
+  log_uint(LOG_LEVEL_INFO, revision);
   log_line_end(LOG_LEVEL_INFO);
+  kernel_assert(revision == 0 || revision == 2);
 
-  _init_rsdt((byte_t *)(u64_t)rsdt_addr);
+  /* TODO: ACPI 2.0+ needs to be supported */
+  if (revision == 0) {
+    rsdt_addr = *(const u32_t *)ptr;
+    ptr += 4;
+    (void)rsdt_addr;
+
+    kernel_assert((ptr - (uptr_t)multi_boot_info) == len);
+
+    byte_sum = 0;
+    for (const byte_t *byte = multi_boot_info; (uptr_t)byte < ptr; byte++) {
+      byte_sum += *byte;
+    }
+    kernel_assert((byte_sum & 0xff) == 0); /* Validate check sum */
+
+    _init_rsdt((byte_t *)(u64_t)rsdt_addr);
+  }
 }

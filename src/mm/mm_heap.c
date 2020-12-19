@@ -326,11 +326,6 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
 
 void mm_heap_free(byte_t *block_user)
 {
-  log_line_start(LOG_LEVEL_DEBUG);
-  log_str(LOG_LEVEL_DEBUG, "mm_heap_free: ");
-  log_uint_of_size(LOG_LEVEL_DEBUG, (uptr_t)block_user);
-  log_line_end(LOG_LEVEL_DEBUG);
-
   block_t *block = _block_check_in(block_user);
   block = _coalescing_block(block);
   _free_list_enqueue(block, block->class);
@@ -397,11 +392,6 @@ base_private void _test_alloc_then_free(void)
       usz_t alloc = 0;
 
       for (; (alloc < consecutive) && (test < test_size_cnt); alloc++) {
-        log_line_start(LOG_LEVEL_DEBUG);
-        log_str(LOG_LEVEL_DEBUG, "ALLOC: ");
-        log_uint(LOG_LEVEL_DEBUG, test_size[test]);
-        log_line_end(LOG_LEVEL_DEBUG);
-
         mem[alloc] = mm_heap_alloc(test_size[test], &all_size);
         kernel_assert(mem[alloc] != NULL);
         kernel_assert(all_size >= test_size[test]);
@@ -412,11 +402,6 @@ base_private void _test_alloc_then_free(void)
       }
 
       for (usz_t free = 0; free < alloc; free++) {
-        log_line_start(LOG_LEVEL_DEBUG);
-        log_str(LOG_LEVEL_DEBUG, "FREE: ");
-        log_uint(LOG_LEVEL_DEBUG, test_size[test - alloc + free]);
-        log_line_end(LOG_LEVEL_DEBUG);
-
         mm_heap_free(mem[free]);
 
         _test_verify_all_list_class();
@@ -461,17 +446,9 @@ base_private void _test_alloc_free_part_alloc_more(void)
       kernel_assert_d(mems_cnt == mems_cap);
       for (usz_t mem_idx = 0; mem_idx < mems_cap; mem_idx++) {
         mem = mems[mem_idx];
-        /*
         for (usz_t by = 0; by < mems_lens[mem_idx]; by++) {
           kernel_assert(mem[by] == (byte_t)mem_idx);
         }
-        */
-
-        log_line_start(LOG_LEVEL_DEBUG);
-        log_str(LOG_LEVEL_DEBUG, "FREE: ");
-        log_uint(LOG_LEVEL_DEBUG, mems_lens[mem_idx]);
-        log_line_end(LOG_LEVEL_DEBUG);
-
         mm_heap_free(mem);
       }
       mems_cnt = 0;
@@ -483,23 +460,14 @@ base_private void _test_alloc_free_part_alloc_more(void)
     mem = mm_heap_alloc(size, &all_size);
     kernel_assert(all_size >= size);
 
-    log_line_start(LOG_LEVEL_DEBUG);
-    log_str(LOG_LEVEL_DEBUG, "ALLOC: ");
-    log_uint(LOG_LEVEL_DEBUG, size);
-    log_str(LOG_LEVEL_DEBUG, " -> ");
-    log_uint(LOG_LEVEL_DEBUG, all_size);
-    log_line_end(LOG_LEVEL_DEBUG);
-
     /* Save allocated memory, actual allocated length, and fill them as known
      * bytes. */
     mems[mems_cnt] = mem;
     mems_lens[mems_cnt] = all_size;
     total += all_size;
-    /*
     for (usz_t by = 0; by < (all_size); by++) {
       mem[by] = (byte_t)mems_cnt;
     }
-    */
     mems_cnt++;
   }
 

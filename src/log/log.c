@@ -1,5 +1,6 @@
 #include "log.h"
 #include "containers_string.h"
+#include "drivers_screen.h"
 #include "drivers_serial.h"
 #include "kernel_panic.h"
 #include "panel.h"
@@ -16,13 +17,29 @@ base_private const u64_t _SIZE_UNITS[_SIZE_COUNT] = {
 
 base_private const ch_t *_SIZE_NOTES[_SIZE_COUNT] = { "ZB", "PB", "TB", "GB",
   "MB", "KB" };
-
 base_private const ch_t *_LINE_PREFIX_LEVEL[LOG_LEVEL_FATAL + 1] = { "[BTE]",
   "[DBG]", "[INF]", "[WRN]", "[ERR]", "[FAT]" };
+base_private const usz_t _LINE_PREFIX_LEVEL_LEN = 6;
+
+base_private usz_t _screen_row = 0;
+base_private usz_t _screen_col = 0;
 
 void log_str_len(log_level_t lv, const ch_t *str, usz_t len)
 {
+  usz_t screen_len;
+
+  kernel_assert_d(_screen_col <= SCREEN_WIDTH);
+  if ((SCREEN_WIDTH - _screen_col) < len) {
+    screen_len = SCREEN_WIDTH - _screen_col;
+  } else {
+    screen_len = len;
+  }
+  for (usz_t i = 0; i < screen_len; i++) {
+    screen_write_at((byte_t)str[i], _screen_row, _screen_col++);
+  }
+
   serial_write_str(str, len);
+
   base_mark_unuse(lv);
 }
 
@@ -121,7 +138,7 @@ base_private const ch_t *_file_strip(const ch_t *file)
 
 void _log_line_start(log_level_t lv, const ch_t *file, usz_t line)
 {
-  serial_write_str(_LINE_PREFIX_LEVEL[lv], 6);
+  log_str_len(lv, _LINE_PREFIX_LEVEL[lv], _LINE_PREFIX_LEVEL_LEN);
   log_str_len(lv, " ", 1);
   log_str(lv, _file_strip(file));
   log_str_len(lv, ":", 1);
@@ -131,6 +148,9 @@ void _log_line_start(log_level_t lv, const ch_t *file, usz_t line)
 
 void log_line_end(log_level_t lv)
 {
+  _screen_row = (_screen_row + 1) % SCREEN_HEIGHT;
+  _screen_col = 0;
+
   serial_write_str("\r\n", 2);
   base_mark_unuse(lv);
 }
