@@ -224,7 +224,7 @@ base_private bo_t _split_from(u8_t class)
     } else {
       kernel_assert_d(class == (_BLOCK_MAX_CLASS - 1));
       succ = _expand_heap();
-      kernel_assert_d(succ);
+      kernel_assert(succ);
       free = _free_list_dequeue(class);
       kernel_assert_d(free != NULL);
     }
@@ -296,10 +296,17 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
   free = _free_list_dequeue(free_class);
 
   if (free == NULL) {
-    ok = _split_from((u8_t)(free_class + 1));
-    if (ok) {
+    if (free_class < (_BLOCK_MAX_CLASS - 1)) {
+      ok = _split_from((u8_t)(free_class + 1));
+      if (ok) {
+        free = _free_list_dequeue(free_class);
+        kernel_assert_d(free != NULL);
+      }
+    } else {
+      ok = _expand_heap();
+      kernel_assert(ok);
       free = _free_list_dequeue(free_class);
-      kernel_assert_d(free != NULL);
+      kernel_assert(free != NULL);
     }
   } else {
     ok = true;
@@ -319,6 +326,11 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
 
 void mm_heap_free(byte_t *block_user)
 {
+  log_line_start(LOG_LEVEL_DEBUG);
+  log_str(LOG_LEVEL_DEBUG, "mm_heap_free: ");
+  log_uint_of_size(LOG_LEVEL_DEBUG, (uptr_t)block_user);
+  log_line_end(LOG_LEVEL_DEBUG);
+
   block_t *block = _block_check_in(block_user);
   block = _coalescing_block(block);
   _free_list_enqueue(block, block->class);
@@ -361,14 +373,18 @@ base_private void _test_verify_all_list_class(void)
   }
 }
 
-base_private void _test_1_alloc_1_free(void)
+base_private void _test_alloc_then_free(void)
 {
   usz_t all_size;
-  byte_t *mem;
+  byte_t *mem[1024];
   usz_t test_size[1024];
   usz_t test_size_cnt = 0;
 
   test_size[test_size_cnt++] = 1;
+  test_size[test_size_cnt++] = 1358;
+  test_size[test_size_cnt++] = 2715;
+  test_size[test_size_cnt++] = 4072;
+  test_size[test_size_cnt++] = 5429;
   test_size[test_size_cnt++] = 4096;
   test_size[test_size_cnt++] = 10000;
   test_size[test_size_cnt++] = 1024 * 1024;
@@ -376,37 +392,58 @@ base_private void _test_1_alloc_1_free(void)
   test_size[test_size_cnt++] =
       _size_of_class(_BLOCK_MAX_CLASS - 1) - sizeof(block_t);
 
-  for (usz_t test = 0; test < test_size_cnt; test++) {
-    mem = mm_heap_alloc(test_size[test], &all_size);
+  for (usz_t consecutive = 1; consecutive <= test_size_cnt; consecutive++) {
+    for (usz_t test = 0; test < test_size_cnt;) {
+      usz_t alloc = 0;
 
-    kernel_assert(mem != NULL);
-    kernel_assert(all_size >= test_size[test]);
+      for (; (alloc < consecutive) && (test < test_size_cnt); alloc++) {
+        log_line_start(LOG_LEVEL_DEBUG);
+        log_str(LOG_LEVEL_DEBUG, "ALLOC: ");
+        log_uint(LOG_LEVEL_DEBUG, test_size[test]);
+        log_line_end(LOG_LEVEL_DEBUG);
 
-    mm_clean(mem, all_size);
-    mm_heap_free(mem);
+        mem[alloc] = mm_heap_alloc(test_size[test], &all_size);
+        kernel_assert(mem[alloc] != NULL);
+        kernel_assert(all_size >= test_size[test]);
+        mm_clean(mem[alloc], all_size);
+        test++;
 
-    for (u8_t class = 0; class < (_BLOCK_MAX_CLASS - 1); class ++) {
-      kernel_assert(_free_list[class] == NULL);
+        _test_verify_all_list_class();
+      }
+
+      for (usz_t free = 0; free < alloc; free++) {
+        log_line_start(LOG_LEVEL_DEBUG);
+        log_str(LOG_LEVEL_DEBUG, "FREE: ");
+        log_uint(LOG_LEVEL_DEBUG, test_size[test - alloc + free]);
+        log_line_end(LOG_LEVEL_DEBUG);
+
+        mm_heap_free(mem[free]);
+
+        _test_verify_all_list_class();
+        _heap_validate();
+      }
+
+      for (u8_t class = 0; class < (_BLOCK_MAX_CLASS - 1); class ++) {
+        kernel_assert(_free_list[class] == NULL);
+      }
+      kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1] != NULL);
+      _block_validate(_free_list[_BLOCK_MAX_CLASS - 1]);
+      kernel_assert(
+          _free_list[_BLOCK_MAX_CLASS - 1]->class == (_BLOCK_MAX_CLASS - 1));
+
+      /* Enable this after implemented heap shrink
+       kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1]->next_free == NULL); */
     }
-    kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1] != NULL);
-    _block_validate(_free_list[_BLOCK_MAX_CLASS - 1]);
-    kernel_assert(
-        _free_list[_BLOCK_MAX_CLASS - 1]->class == (_BLOCK_MAX_CLASS - 1));
-    _heap_validate();
   }
 
   log_builtin_test_pass();
 }
 
-void test_heap(void)
+base_private void _test_alloc_free_part_alloc_more(void)
 {
-  _test_1_alloc_1_free();
-  base_mark_unuse(_test_verify_all_list_class);
-
-  /*
   usz_t total;
   byte_t *mems[BYTE_MAX];
-  usz_t mem_lens[BYTE_MAX];
+  usz_t mems_lens[BYTE_MAX];
   usz_t mems_cnt;
   usz_t mems_cap = 1;
 
@@ -418,48 +455,62 @@ void test_heap(void)
     usz_t all_size;
     byte_t *mem;
 
-    _heap_validate();
-
-    mem = mm_heap_alloc(size, &all_size);
-    kernel_assert(all_size >= size);
+    /* Verify all bytes saved in allocated memories are untouched,
+     * and then free. */
     if (mems_cnt >= mems_cap) {
       kernel_assert_d(mems_cnt == mems_cap);
       for (usz_t mem_idx = 0; mem_idx < mems_cap; mem_idx++) {
         mem = mems[mem_idx];
-        for (usz_t by = 0; by < mem_lens[mem_idx]; by++) {
+        /*
+        for (usz_t by = 0; by < mems_lens[mem_idx]; by++) {
           kernel_assert(mem[by] == (byte_t)mem_idx);
         }
+        */
+
+        log_line_start(LOG_LEVEL_DEBUG);
+        log_str(LOG_LEVEL_DEBUG, "FREE: ");
+        log_uint(LOG_LEVEL_DEBUG, mems_lens[mem_idx]);
+        log_line_end(LOG_LEVEL_DEBUG);
+
         mm_heap_free(mem);
-        for (usz_t mem_idx_after = mem_idx + 1; mem_idx_after < mems_cap;
-             mem_idx_after++) {
-          mem = mems[mem_idx_after];
-          for (usz_t by = 0; by < mem_lens[mem_idx_after]; by++) {
-            mem = mems[mem_idx_after];
-          }
-        }
       }
       mems_cnt = 0;
       total = 0;
     }
 
     kernel_assert_d(mems_cnt < mems_cap);
+
+    mem = mm_heap_alloc(size, &all_size);
+    kernel_assert(all_size >= size);
+
+    log_line_start(LOG_LEVEL_DEBUG);
+    log_str(LOG_LEVEL_DEBUG, "ALLOC: ");
+    log_uint(LOG_LEVEL_DEBUG, size);
+    log_str(LOG_LEVEL_DEBUG, " -> ");
+    log_uint(LOG_LEVEL_DEBUG, all_size);
+    log_line_end(LOG_LEVEL_DEBUG);
+
+    /* Save allocated memory, actual allocated length, and fill them as known
+     * bytes. */
     mems[mems_cnt] = mem;
-    mem_lens[mems_cnt] = all_size;
+    mems_lens[mems_cnt] = all_size;
     total += all_size;
-    for (usz_t by = 0; by < all_size; by++) {
+    /*
+    for (usz_t by = 0; by < (all_size); by++) {
       mem[by] = (byte_t)mems_cnt;
     }
+    */
     mems_cnt++;
-    for (usz_t mem_idx = 0; mem_idx < mems_cnt; mem_idx++) {
-      mem = mems[mem_idx];
-      for (usz_t by = 0; by < mem_lens[mem_idx]; by++) {
-        kernel_assert(mem[by] == (byte_t)mem_idx);
-      }
-    }
   }
 
+  _heap_validate();
   _test_verify_all_list_class();
   log_builtin_test_pass();
-  */
+}
+
+void test_heap(void)
+{
+  _test_alloc_then_free();
+  _test_alloc_free_part_alloc_more();
 }
 #endif
