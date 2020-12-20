@@ -1,5 +1,3 @@
-#include "kernel_main.h"
-#include "boot.h"
 #include "containers_string.h"
 #include "cpu.h"
 #include "drivers_acpi.h"
@@ -13,6 +11,13 @@
 #include "log.h"
 #include "mm.h"
 #include "panel.h"
+
+/* Defined in boot/boot.asm */
+extern uptr_t boot_stack_bottom;
+extern uptr_t boot_stack_top;
+
+/* Called from boot/boot.asm */
+void kernal_main(uptr_t multi_boot_info);
 
 #define _MULTI_BOOT_TAG_TYPE_MMAP 6
 #define _MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS 9
@@ -153,31 +158,29 @@ base_private void _test_stack_overflow(void)
   }
 }
 
-void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
+void kernal_main(uptr_t multi_boot_info)
 {
-  u64_t stack_check;
+  uptr_t rbp;
+  uptr_t rsp;
+  u64_t rbp_off;
+  u64_t rsp_off;
+  uptr_t new_rsp;
+  uptr_t new_rbp;
+  uptr_t curr_stack_top;
+  uptr_t curr_stack_bottom;
+  usz_t curr_stack_len;
 
+  screen_init();
   serial_init();
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "kernel_prototype started..");
-  log_uint_of_size(LOG_LEVEL_INFO, stack_bottom);
-  log_str(LOG_LEVEL_INFO, ", stack: ");
-  log_uint_of_size(LOG_LEVEL_INFO, (uptr_t)&stack_check);
   log_line_end(LOG_LEVEL_INFO);
-
-  kernel_assert(((uptr_t)&stack_check) < stack_bottom);
-  /* This check constant is estimated local vars in function, should be 
-   * adjusted when local var count is changed. */
-  kernel_assert(((uptr_t)&stack_check + 1024) > stack_bottom);
-  kernel_assert(mm_align_check(stack_bottom, 4096));
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "git revision: ");
   log_str(LOG_LEVEL_INFO, BUILD_GIT_REVISION);
   log_line_end(LOG_LEVEL_INFO);
-
-  screen_init();
 
   _multi_boot_info_save(&_boot_info, (const byte_t *)multi_boot_info);
 
@@ -195,18 +198,15 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
 
   intr_init();
 
-  mm_init();
+  mm_init((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
 
-  uptr_t rbp;
-  uptr_t rsp;
-  u64_t rbp_off;
-  u64_t rsp_off;
-  uptr_t new_rsp;
-  uptr_t new_rbp;
-  uptr_t curr_stack_top = (uptr_t)&boot_stack_top;
-  uptr_t curr_stack_bottom = (uptr_t)&boot_stack_bottom;
-  usz_t curr_stack_len;
+  /* Switching from boot time stack to new stack in high half. 
+   * It is safer to do it in kernel_main as it is the entry function of C code,
+   * and will never get return. */
+  curr_stack_top = (uptr_t)&boot_stack_top;
+  curr_stack_bottom = (uptr_t)&boot_stack_bottom;
 
+  /* Read from register RSP and RBP */
   __asm__("movq %%rbp, %0" : "=r"(rbp) :);
   __asm__("movq %%rsp, %0" : "=r"(rsp) :);
 
@@ -216,29 +216,14 @@ void kernal_main(uptr_t multi_boot_info, uptr_t stack_bottom)
   new_rbp = mm_vadd_stack_bp_bottom_get() - rbp_off;
   new_rsp = mm_vadd_stack_bp_bottom_get() - rsp_off;
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "rsp = ");
-  log_uint_of_size(LOG_LEVEL_INFO, rsp);
-  log_str(LOG_LEVEL_INFO, ", rbp = ");
-  log_uint_of_size(LOG_LEVEL_INFO, rbp);
-  log_str(LOG_LEVEL_INFO, ", rsp offs = ");
-  log_uint_of_size(LOG_LEVEL_INFO, rsp_off);
-  log_str(LOG_LEVEL_INFO, ", rbp offs = ");
-  log_uint_of_size(LOG_LEVEL_INFO, rbp_off);
-  log_str(LOG_LEVEL_INFO, ", new rsp = ");
-  log_uint_of_size(LOG_LEVEL_INFO, new_rsp);
-  log_str(LOG_LEVEL_INFO, ", new rbp = ");
-  log_uint_of_size(LOG_LEVEL_INFO, new_rbp);
-  log_str(LOG_LEVEL_INFO, ", new stack bottom = ");
-  log_uint_of_size(LOG_LEVEL_INFO, mm_vadd_stack_bp_bottom_get());
-  log_str(LOG_LEVEL_INFO, ", top = ");
-  log_uint_of_size(LOG_LEVEL_INFO, mm_vadd_stack_bp_top_get());
-  log_line_end(LOG_LEVEL_INFO);
-
   curr_stack_len = curr_stack_bottom - curr_stack_top;
+
+  /* Copy everything from old stack to new stack */
   mm_copy((byte_t *)(mm_vadd_stack_bp_bottom_get() - curr_stack_len),
       (byte_t *)curr_stack_top, curr_stack_len);
 
+  /* Set register RSP and RBP to new value, after here we switch to work on
+   * new stack. */
   __asm__("movq %0, %%rbp" : /* no output */ : "r"(new_rbp));
   __asm__("movq %0, %%rsp" : /* no output */ : "r"(new_rsp));
   _test_stack_overflow();

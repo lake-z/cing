@@ -1,4 +1,3 @@
-#include "boot.h"
 #include "containers_string.h"
 #include "kernel_panic.h"
 #include "log.h"
@@ -142,11 +141,10 @@ void mm_early_init(const byte_t *kernel_elf_info,
   mm_page_early_init(_kernel_start, _kernel_end);
 }
 
-void mm_init(void)
+void mm_init(uptr_t boot_stack_bottom, uptr_t boot_stack_top)
 {
   mm_frame_init();
-  mm_page_init(_kernel_start, _kernel_end, (uptr_t)&boot_stack_bottom,
-      (uptr_t)&boot_stack_top);
+  mm_page_init(_kernel_start, _kernel_end, boot_stack_bottom, boot_stack_top);
   mm_heap_init();
 
   log_line_start(LOG_LEVEL_INFO);

@@ -9,12 +9,12 @@ bits 32		; specifies that the following lines are 32-bit instructions.
 		; GRUB starts our kernel. When we switch to Long mode, we can
 		; use bits 64 (64-bit instructions).
 start:
+  ; Set up stack
 	mov esp, boot_stack_bottom
   ; According to the ABI, the first 6 integer or pointer arguments to a
   ; function are passed in registers. The first is placed in rdi, the second in 
   ; rsi, the third in rdx, and then rcx, r8 and r9. Only the 7th argument and
   ; onwards are passed on the stack.
-	mov esi, boot_stack_bottom
 	mov edi, ebx ; ebx points to a boot information structure.
 
 	; various checks before we can move on.

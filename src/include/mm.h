@@ -15,7 +15,7 @@ void mm_early_init(const byte_t *kernel_elf_info,
     const byte_t *mmap_info,
     usz_t mmap_info_len);
 
-void mm_init(void);
+void mm_init(uptr_t boot_stack_bottom, uptr_t boot_stack_top);
 
 uptr_t mm_vadd_stack_bp_bottom_get(void);
 uptr_t mm_vadd_stack_bp_top_get(void);

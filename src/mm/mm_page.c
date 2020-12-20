@@ -598,23 +598,6 @@ void mm_page_init(uptr_t kernel_start,
 
   kernel_assert(unmap == _early_map_end);
 
-  log_line_start(LOG_LEVEL_DEBUG);
-  log_str(LOG_LEVEL_DEBUG, "Current rsp: ");
-  log_uint_of_size(LOG_LEVEL_DEBUG, cpu_read_rsp());
-  log_str(LOG_LEVEL_DEBUG, ", rbp: ");
-  log_uint_of_size(LOG_LEVEL_DEBUG, cpu_read_rbp());
-  log_str(LOG_LEVEL_INFO, ", stack: ");
-  log_uint(LOG_LEVEL_INFO, (uptr_t)boot_stack_bottom);
-  log_str(LOG_LEVEL_INFO, "(");
-  log_uint_of_size(LOG_LEVEL_INFO, (uptr_t)boot_stack_bottom);
-  log_str(LOG_LEVEL_INFO, ")");
-  log_str(LOG_LEVEL_INFO, " .. ");
-  log_uint(LOG_LEVEL_INFO, (uptr_t)boot_stack_top);
-  log_str(LOG_LEVEL_INFO, "(");
-  log_uint_of_size(LOG_LEVEL_INFO, (uptr_t)boot_stack_top);
-  log_str(LOG_LEVEL_INFO, ")");
-  log_line_end(LOG_LEVEL_DEBUG);
-
   _init_stack_memory(boot_stack_top, boot_stack_bottom);
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
