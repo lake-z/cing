@@ -40,7 +40,17 @@ base_private void _init_rsdt(byte_t *rsdt)
   }
 }
 
-void acpi_init(const byte_t *multi_boot_info, usz_t len)
+void acpi_init_new(const byte_t *multi_boot_info, usz_t len)
+{
+  base_mark_unuse(multi_boot_info);
+  base_mark_unuse(len);
+
+  log_line_start(LOG_LEVEL_INFO);
+  log_str(LOG_LEVEL_INFO, "ACPI 64 init");
+  log_line_end(LOG_LEVEL_INFO);
+}
+
+void acpi_init_old(const byte_t *multi_boot_info, usz_t len)
 {
   uptr_t ptr = (uptr_t)multi_boot_info;
   const ch_t *signature;

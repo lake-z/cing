@@ -193,8 +193,16 @@ void kernal_main(uptr_t multi_boot_info)
       _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
 
-  acpi_init(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD],
-      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
+  if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL) {
+    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
+    acpi_init_old(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD],
+        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
+  } else {
+    kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL);
+    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
+    acpi_init_new(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW],
+        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW]);
+  }
 
   intr_init();
 

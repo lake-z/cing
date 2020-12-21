@@ -24,8 +24,11 @@ base_private block_t *_free_list[_BLOCK_MAX_CLASS];
 base_private uptr_t _heap_end;
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
+
 /* Built-in tests declarations */
-base_private void _test_verify_all_list_class(void);
+base_private void _test_helper_verify_all_list_class(void);
+base_private void _test_helper_verify_all_block_coalesced(void);
+
 #endif
 
 base_private u64_t _size_of_class(usz_t class)
@@ -357,7 +360,7 @@ base_private void _heap_validate(void)
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
 /* Built-in tests */
-base_private void _test_verify_all_list_class(void)
+base_private void _test_helper_verify_all_list_class(void)
 {
   for (u8_t class = 0; class < _BLOCK_MAX_CLASS; class ++) {
     block_t *free = _free_list[class];
@@ -366,6 +369,20 @@ base_private void _test_verify_all_list_class(void)
       free = free->next_free;
     }
   }
+}
+
+base_private void _test_helper_verify_all_block_coalesced(void)
+{
+  for (u8_t class = 0; class < (_BLOCK_MAX_CLASS - 1); class ++) {
+    kernel_assert(_free_list[class] == NULL);
+  }
+  kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1] != NULL);
+  _block_validate(_free_list[_BLOCK_MAX_CLASS - 1]);
+  kernel_assert(
+      _free_list[_BLOCK_MAX_CLASS - 1]->class == (_BLOCK_MAX_CLASS - 1));
+
+  /* Enable this after implemented heap shrink
+       kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1]->next_free == NULL); */
 }
 
 base_private void _test_alloc_then_free(void)
@@ -398,87 +415,134 @@ base_private void _test_alloc_then_free(void)
         mm_clean(mem[alloc], all_size);
         test++;
 
-        _test_verify_all_list_class();
+        _test_helper_verify_all_list_class();
       }
 
       for (usz_t free = 0; free < alloc; free++) {
         mm_heap_free(mem[free]);
 
-        _test_verify_all_list_class();
+        _test_helper_verify_all_list_class();
         _heap_validate();
       }
 
-      for (u8_t class = 0; class < (_BLOCK_MAX_CLASS - 1); class ++) {
-        kernel_assert(_free_list[class] == NULL);
-      }
-      kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1] != NULL);
-      _block_validate(_free_list[_BLOCK_MAX_CLASS - 1]);
-      kernel_assert(
-          _free_list[_BLOCK_MAX_CLASS - 1]->class == (_BLOCK_MAX_CLASS - 1));
-
-      /* Enable this after implemented heap shrink
-       kernel_assert(_free_list[_BLOCK_MAX_CLASS - 1]->next_free == NULL); */
+      _test_helper_verify_all_block_coalesced();
     }
   }
 
   log_builtin_test_pass();
 }
 
-base_private void _test_alloc_free_part_alloc_more(void)
+base_private void _test_random_alloc_free(usz_t op_total, usz_t mems_cap)
 {
-  usz_t total;
+  byte_t *mem;
   byte_t *mems[BYTE_MAX];
   usz_t mems_lens[BYTE_MAX];
   usz_t mems_cnt;
-  usz_t mems_cap = 1;
+  usz_t free_cnt;
+  u64_t op;
+  usz_t len;
+  u64_t len_class;
+  const usz_t len_max = _size_of_class(_BLOCK_MAX_CLASS - 1) - sizeof(block_t);
 
   kernel_assert_d(mems_cap < BYTE_MAX);
 
   mems_cnt = 0;
-  total = 0;
-  for (usz_t size = 1; size < 1024 * 1024; size += 1357) {
-    usz_t all_size;
-    byte_t *mem;
+  free_cnt = 0;
+  len = 0;
+  len_class = 0;
+  for (usz_t i = 0; i < op_total; i++) {
+    if (mems_cnt >= mems_cap) {
+      kernel_assert_d(mems_cnt == mems_cap);
+      op *= 2; /* A free operation */
+    } else if (mems_cnt == 0) {
+      op = op * 2 + 1; /* A alloc operation */
+    } else {
+      op = util_rand_int_next(op);
+    }
 
     /* Verify all bytes saved in allocated memories are untouched,
      * and then free. */
-    if (mems_cnt >= mems_cap) {
-      kernel_assert_d(mems_cnt == mems_cap);
-      for (usz_t mem_idx = 0; mem_idx < mems_cap; mem_idx++) {
+    if ((op % 2) == 0) {
+      kernel_assert_d(mems_cnt > 0);
+      kernel_assert_d(mems_cnt <= mems_cap);
+
+      free_cnt = util_rand_int_next(free_cnt);
+      free_cnt = free_cnt % mems_cnt + 1;
+
+      for (usz_t free_idx = 0; free_idx < free_cnt; free_idx++) {
+        usz_t mem_idx = mems_cnt - free_idx - 1;
+
+        kernel_assert(mem_idx < mems_cnt);
         mem = mems[mem_idx];
         for (usz_t by = 0; by < mems_lens[mem_idx]; by++) {
           kernel_assert(mem[by] == (byte_t)mem_idx);
         }
+
         mm_heap_free(mem);
       }
-      mems_cnt = 0;
-      total = 0;
+      mems_cnt -= free_cnt;
+      kernel_assert(mems_cnt < mems_cap);
+    } else {
+      usz_t all_len;
+      usz_t len_class_max;
+
+      kernel_assert_d(mems_cnt < mems_cap);
+
+      len_class = util_rand_int_next(len_class);
+      len_class_max = len_class % 4;
+
+      switch (len_class_max) {
+      case 0:
+        len_class_max = 32 * 1024;
+        break;
+      case 1:
+        len_class_max = 512 * 1024;
+        break;
+      case 2:
+        len_class_max = 8 * 1024 * 1024;
+        break;
+      case 3:
+        len_class_max = len_max;
+        break;
+      default:
+        kernel_panic("IMPOSSIBLE");
+      }
+
+      len = util_rand_int_next(len);
+      len = len % len_class_max + 1;
+
+      mem = mm_heap_alloc(len, &all_len);
+      kernel_assert(all_len >= len);
+
+      /* Save allocated memory, actual allocated length, and fill them as known
+       * bytes. */
+      mems[mems_cnt] = mem;
+      mems_lens[mems_cnt] = all_len;
+      for (usz_t by = 0; by < (all_len); by++) {
+        mem[by] = (byte_t)mems_cnt;
+      }
+      mems_cnt++;
     }
 
-    kernel_assert_d(mems_cnt < mems_cap);
-
-    mem = mm_heap_alloc(size, &all_size);
-    kernel_assert(all_size >= size);
-
-    /* Save allocated memory, actual allocated length, and fill them as known
-     * bytes. */
-    mems[mems_cnt] = mem;
-    mems_lens[mems_cnt] = all_size;
-    total += all_size;
-    for (usz_t by = 0; by < (all_size); by++) {
-      mem[by] = (byte_t)mems_cnt;
-    }
-    mems_cnt++;
+    _heap_validate();
+    _test_helper_verify_all_list_class();
   }
 
-  _heap_validate();
-  _test_verify_all_list_class();
+  for (usz_t i = 0; i < mems_cnt; i++) {
+    mem = mems[i];
+    for (usz_t by = 0; by < mems_lens[i]; by++) {
+      kernel_assert(mem[by] == (byte_t)i);
+    }
+
+    mm_heap_free(mem);
+  }
+
   log_builtin_test_pass();
 }
 
 void test_heap(void)
 {
   _test_alloc_then_free();
-  _test_alloc_free_part_alloc_more();
+  _test_random_alloc_free(200, 5);
 }
 #endif
