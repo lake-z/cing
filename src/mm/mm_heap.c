@@ -278,7 +278,7 @@ base_private block_t *_coalescing_block(block_t *block)
   return block;
 }
 
-byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
+vptr_t mm_heap_alloc(usz_t len, usz_t *all_len)
 {
   u8_t free_class;
   block_t *free;
@@ -327,14 +327,19 @@ byte_t *mm_heap_alloc(usz_t len, usz_t *all_len)
   return (byte_t *)free;
 }
 
-void mm_heap_free(byte_t *block_user)
+vptr_t mm_heap_alloc_minimum(usz_t *all_len)
+{
+  return mm_heap_alloc(1, all_len);
+}
+
+void mm_heap_free(vptr_t block_user)
 {
   block_t *block = _block_check_in(block_user);
   block = _coalescing_block(block);
   _free_list_enqueue(block, block->class);
 }
 
-void mm_heap_init(void)
+void mm_heap_bootstrap(void)
 {
   for (usz_t i = 0; i < _BLOCK_MAX_CLASS; i++) {
     _free_list[i] = NULL;
@@ -536,6 +541,7 @@ base_private void _test_random_alloc_free(usz_t op_total, usz_t mems_cap)
 
     mm_heap_free(mem);
   }
+  _test_helper_verify_all_block_coalesced();
 
   log_builtin_test_pass();
 }

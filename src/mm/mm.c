@@ -119,8 +119,8 @@ base_private void _init_kernel_elf_symbols(
   kernel_assert((_kernel_end - _kernel_start) < 1024 * 1024 * 1024);
 
   /* Verify this function must be with in kernel image */
-  kernel_assert((uptr_t)mm_early_init < _kernel_end);
-  kernel_assert((uptr_t)mm_early_init > _kernel_start);
+  kernel_assert((uptr_t)mm_early_bootstrap < _kernel_end);
+  kernel_assert((uptr_t)mm_early_bootstrap > _kernel_start);
   kernel_assert(padd_range_valid(_kernel_start, _kernel_end));
 
   log_line_start(LOG_LEVEL_INFO);
@@ -131,7 +131,7 @@ base_private void _init_kernel_elf_symbols(
   log_line_end(LOG_LEVEL_INFO);
 }
 
-void mm_early_init(const byte_t *kernel_elf_info,
+void mm_early_bootstrap(const byte_t *kernel_elf_info,
     usz_t elf_info_len base_may_unuse,
     const byte_t *mmap_info,
     usz_t mmap_info_len)
@@ -141,11 +141,12 @@ void mm_early_init(const byte_t *kernel_elf_info,
   mm_page_early_init(_kernel_start, _kernel_end);
 }
 
-void mm_init(uptr_t boot_stack_bottom, uptr_t boot_stack_top)
+void mm_bootstrap(uptr_t boot_stack_bottom, uptr_t boot_stack_top)
 {
   mm_frame_init();
   mm_page_init(_kernel_start, _kernel_end, boot_stack_bottom, boot_stack_top);
-  mm_heap_init();
+  mm_heap_bootstrap();
+  mm_allocator_bootstrap();
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "mm initialize finished, ");

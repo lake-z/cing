@@ -188,7 +188,7 @@ void kernal_main(uptr_t multi_boot_info)
   kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
   kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP] != NULL);
   kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP] != 0);
-  mm_early_init(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
+  mm_early_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
@@ -206,7 +206,7 @@ void kernal_main(uptr_t multi_boot_info)
 
   intr_init();
 
-  mm_init((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
+  mm_bootstrap((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
 
   /* Switching from boot time stack to new stack in high half. 
    * It is safer to do it in kernel_main as it is the entry function of C code,
