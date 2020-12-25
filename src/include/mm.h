@@ -13,6 +13,7 @@ uptr_t mm_align_down(uptr_t p, u64_t align);
 bo_t mm_align_check(uptr_t p, u64_t align);
 void mm_copy(byte_t *dest, const byte_t *src, usz_t copy_len);
 void mm_clean(vptr_t mem, usz_t size);
+void mm_fill_bytes(byte_t *mem, usz_t size, byte_t data);
 i64_t mm_compare(byte_t *mem1, byte_t *mem2, usz_t len);
 
 void mm_early_bootstrap(const byte_t *kernel_elf_info,

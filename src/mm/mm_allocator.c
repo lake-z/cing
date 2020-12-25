@@ -105,9 +105,8 @@ vptr_t mm_allocate(mm_allocator_t *all, usz_t size, usz_t align)
 {
   usz_t slop;
   usz_t need;
-  vptr_t ret;
+  uptr_t ret;
   area_t *area;
-  uptr_t ptr;
 
   area = all->list;
   if (area == NULL) {
@@ -116,24 +115,33 @@ vptr_t mm_allocate(mm_allocator_t *all, usz_t size, usz_t align)
     kernel_assert_d(all->list == area);
   }
 
-  ptr = _area_free_start(area);
-  slop = ptr % align;
+  ret = _area_free_start(area);
+  slop = ret % align;
   if (slop > 0) {
     slop = align - slop;
   }
   need = size + slop;
 
   if (_area_free_len(area) < need) {
+    need = size + align; /* Gurantees to satisfy an aligned allocate */
     area = _allocator_new_area(all, need);
     kernel_assert_d(all->list == area);
+    kernel_assert_d(_area_free_len(area) >= need);
   }
-  kernel_assert_d(_area_free_len(area) >= need);
 
-  ret = (vptr_t)(_area_free_start(area) + slop);
+  ret = _area_free_start(area);
+  slop = ret % align;
+  if (slop > 0) {
+    slop = align - slop;
+  }
+  need = size + slop;
+  kernel_assert_d(_area_free_len(area) >= need);
+  ret += slop;
   area->use_len += need;
 
   kernel_assert_d(area->use_len < area->block_len);
-  return ret;
+  kernel_assert_d(mm_align_check(ret, align));
+  return (vptr_t)ret;
 }
 
 void mm_allocator_free(mm_allocator_t *all)
@@ -154,3 +162,126 @@ void mm_allocator_free(mm_allocator_t *all)
   all->next_free = _free_alls;
   _free_alls = all;
 }
+
+#ifdef BUILD_BUILTIN_TEST_ENABLED
+/* Built-in tests */
+
+#define _TEST_MAX_UNITS 32
+#define _TEST_UNIT_MEMS_CAP 128
+#define _TEST_MAX_ALLOC 1048576 /* 1MB */
+#define _TEST_MAX_ALIGN 1048576 /* 1MB */
+
+typedef struct test_allocator_unit {
+  mm_allocator_t *all;
+  byte_t *mems[_TEST_UNIT_MEMS_CAP];
+  usz_t mem_lens[_TEST_UNIT_MEMS_CAP];
+  usz_t mem_cnt;
+} test_allocator_unit_t;
+
+base_private bo_t _test_unit_free(test_allocator_unit_t *unit)
+{
+  byte_t *mem;
+  usz_t len;
+  byte_t by;
+
+  for (usz_t i = 0; i < unit->mem_cnt; i++) {
+    mem = unit->mems[i];
+    len = unit->mem_lens[i];
+    by = (byte_t)(i % BYTE_MAX);
+    for (usz_t by_idx; by_idx < len; by_idx++) {
+      kernel_assert(mem[by_idx] == by);
+    }
+  }
+
+  mm_allocator_free(unit->all);
+  return true;
+}
+
+base_private bo_t _test_rand_alloc(test_allocator_unit_t *unit)
+{
+  if ((unit->mem_cnt) < _TEST_UNIT_MEMS_CAP) {
+    usz_t size;
+    usz_t align;
+    byte_t *mem;
+    byte_t by;
+
+    if (unit->mem_cnt > 0) {
+      size = util_rand_int_next(unit->mem_lens[unit->mem_cnt - 1]);
+    } else {
+      size = util_rand_int_next(_TEST_MAX_ALLOC);
+    }
+    align = util_rand_int_next(size);
+    align = align % _TEST_MAX_ALIGN + 1;
+    size = size % _TEST_MAX_ALLOC + 1;
+
+    mem = (byte_t *)mm_allocate(unit->all, size, align);
+    kernel_assert(mm_align_check((uptr_t)mem, align));
+    unit->mems[unit->mem_cnt] = mem;
+    unit->mem_lens[unit->mem_cnt] = size;
+    by = (byte_t)(unit->mem_cnt % BYTE_MAX);
+    mm_fill_bytes(mem, size, by);
+    (unit->mem_cnt) += 1;
+
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void test_allocator(void)
+{
+  usz_t op_cnt = 10000;
+  u64_t op_type = 123;
+  test_allocator_unit_t units[_TEST_MAX_UNITS];
+  usz_t unit_cnt = 0;
+  usz_t unit_idx = 0;
+  bo_t ok;
+  u64_t op_clock = 0;
+
+  for (usz_t op = 0; op < op_cnt;) {
+    op_clock++;
+    op_type = util_rand_int_next(op_type + op_clock);
+    op_type = op_type % 9;
+
+    switch (op_type) {
+    case 0:
+      if (unit_cnt < _TEST_MAX_UNITS) {
+        units[unit_cnt].all = mm_allocator_new();
+        units[unit_cnt].mem_cnt = 0;
+        unit_cnt++;
+        op++;
+      }
+      break;
+    case 1:
+      if (unit_cnt > 0) {
+        ok = _test_unit_free(&units[unit_cnt - 1]);
+        if (ok) {
+          unit_cnt--;
+          op++;
+        }
+      }
+      break;
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+      if (unit_cnt > 0) {
+        unit_idx = util_rand_int_next(unit_idx);
+        unit_idx = unit_idx % unit_cnt;
+        ok = _test_rand_alloc(&units[unit_idx]);
+        if (ok) {
+          op++;
+        }
+      }
+      break;
+    default:
+      kernel_panic("Impossible");
+      break;
+    }
+  }
+  log_builtin_test_pass();
+}
+#endif

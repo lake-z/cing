@@ -49,6 +49,13 @@ void mm_clean(vptr_t mem, usz_t size)
   }
 }
 
+void mm_fill_bytes(byte_t *mem, usz_t size, byte_t data)
+{
+  for (usz_t i = 0; i < size; i++) {
+    mem[i] = data;
+  }
+}
+
 i64_t mm_compare(byte_t *mem1, byte_t *mem2, usz_t len)
 {
   int cmp;
@@ -159,5 +166,6 @@ void mm_bootstrap(uptr_t boot_stack_bottom, uptr_t boot_stack_top)
 void test_mm()
 {
   test_heap();
+  test_allocator();
 }
 #endif

@@ -79,6 +79,7 @@ void mm_allocator_bootstrap(void);
 #ifdef BUILD_BUILTIN_TEST_ENABLED
 /* Built-in tests declarations */
 void test_heap(void);
+void test_allocator(void);
 #endif
 
 #endif
