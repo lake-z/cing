@@ -3,10 +3,17 @@
 ## qemu
 
 ```
-qemu-system-x86_64  -vnc 100.81.235.146:0 -cdrom cing.iso -m 5G
-qemu-system-x86_64  -curses -cdrom cing.iso -m 5G
-qemu-system-x86_64  -curses -cdrom cing.iso -m 5G -s -S
+qemu-system-x86_64 -vnc 100.81.235.146:0 -cdrom cing.iso -m 5G
+qemu-system-x86_64 -curses -cdrom cing.iso -m 5G
+qemu-system-x86_64 -curses -cdrom cing.iso -m 5G -s -S
 qemu-system-x86_64 -vnc 100.81.235.146:0 -cdrom cing.iso -m 5G -monitor stdio -serial file:log.txt
+qemu-system-x86_64
+  -machine q35
+  -vnc 100.81.235.146:0
+  -cdrom cing.iso -m 5G
+  -serial stdio
+  -drive file=../nvme1.raw,format=raw,if=none,id=nvme0
+  -device nvme,drive=nvme0,serial=deadbeaf1,max_ioqpairs=8
 ```
 
 ```

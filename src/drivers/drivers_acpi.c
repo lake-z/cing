@@ -1,4 +1,5 @@
 #include "drivers_acpi.h"
+#include "drivers_pcie.h"
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm.h"
@@ -142,11 +143,17 @@ base_private void _init_rsdt(byte_t *rsdt)
 
   for (usz_t i = 0; i < entry_cnt; i++) {
     u32_t ptr32 = *(u32_t *)(rsdt + sizeof(sdt_header_t) + i * 4);
+    i64_t cmp;
 
     sdt = (sdt_header_t *)(uptr_t)ptr32;
     log_line_start(LOG_LEVEL_INFO);
     log_str_len(LOG_LEVEL_INFO, sdt->signature, 4);
     log_line_end(LOG_LEVEL_INFO);
+
+    cmp = mm_compare((byte_t *)(sdt->signature), (byte_t *)"MCFG", 4);
+    if (cmp == 0) {
+      pcie_init((const byte_t *)((uptr_t)sdt + 44), sdt->len - 44);
+    }
   }
 }
 

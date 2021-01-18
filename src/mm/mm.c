@@ -56,7 +56,7 @@ void mm_fill_bytes(byte_t *mem, usz_t size, byte_t data)
   }
 }
 
-i64_t mm_compare(byte_t *mem1, byte_t *mem2, usz_t len)
+i64_t mm_compare(const byte_t *mem1, const byte_t *mem2, usz_t len)
 {
   int cmp;
   kernel_assert(len > 0);
