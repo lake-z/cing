@@ -26,6 +26,7 @@ typedef uint64_t u64_t;
 typedef u8_t byte_t;
 typedef unsigned int uin_t;
 typedef int in_t;
+typedef u64_t ucnt_t;
 typedef size_t usz_t;
 typedef ssize_t ssz_t;
 typedef u64_t ucnt_t;

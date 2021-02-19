@@ -72,6 +72,7 @@ base_private void _init_xsdt(xsdt_t *xsdt)
   log_line_end(LOG_LEVEL_INFO);
 
   for (usz_t i = 0; i < entry_cnt; i++) {
+    i64_t cmp;
     // for (usz_t i = 0; i < 1; i++) {
     sdt_header_t *h =
         *(sdt_header_t **)(((uptr_t)xsdt) + sizeof(xsdt_t) + i * 8);
@@ -82,6 +83,10 @@ base_private void _init_xsdt(xsdt_t *xsdt)
     log_str_len(LOG_LEVEL_INFO, h->signature, 4);
     log_line_end(LOG_LEVEL_INFO);
 
+    cmp = mm_compare((byte_t *)(h->signature), (byte_t *)"MCFG", 4);
+    if (cmp == 0) {
+      pcie_bootstrap((const byte_t *)((uptr_t)h + 44), h->len - 44);
+    }
     // log_uint(LOG_LEVEL_INFO, ((byte_t *)(xsdt->sdt_ptrs))[i]);
     // log_str_len(LOG_LEVEL_INFO, h->signature, 4);
   }
@@ -152,7 +157,7 @@ base_private void _init_rsdt(byte_t *rsdt)
 
     cmp = mm_compare((byte_t *)(sdt->signature), (byte_t *)"MCFG", 4);
     if (cmp == 0) {
-      pcie_init((const byte_t *)((uptr_t)sdt + 44), sdt->len - 44);
+      pcie_bootstrap((const byte_t *)((uptr_t)sdt + 44), sdt->len - 44);
     }
   }
 }
