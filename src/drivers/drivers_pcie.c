@@ -3,6 +3,24 @@
 #include "log.h"
 #include "mm.h"
 
+/* Every PCIe Function is uniquely identified by the Device it resides within
+ * and the Bus to which the Device connects. This unique identifier is commonly 
+ * referred to as a ‘BDF’.
+ *
+ * BUS: Up to 256 Bus Numbers can be assigned by configuration software. The
+ * initial Bus Number, Bus 0, is typically assigned by hardware to the Root
+ * Complex. Bus 0 consists of a Virtual PCI bus with integrated endpoints and
+ * Virtual PCI‐to‐PCI Bridges (P2P) which are hard‐coded with a Device number
+ * and Function number. */
+
+/* PCIe config space is divided into 3 sections:
+ *  [1] PCI header: 64 bytes
+ *  [2] PCI capabilities: 192 bytes
+ *  [3] PCIe extended capabilities: Can be as long as 4KB - 256 bytes */
+
+/* First access to a Function after a reset condition is a Configuration Read
+ * of both bytes of the Vendor ID. */
+
 #define _GROUP_MAX 64
 base_private uptr_t _CONFIG_SPACE_ALIGN = 256 * 1024 * 1024;
 
@@ -17,7 +35,8 @@ typedef struct bus_group {
 base_private group_t _groups[_GROUP_MAX];
 base_private ucnt_t _gropp_cnt;
 
-base_private uptr_t cfg_space_padd(group_t *group, u64_t bus, u64_t dev, u64_t fun)
+base_private uptr_t cfg_space_padd(
+    group_t *group, u64_t bus, u64_t dev, u64_t fun)
 {
   kernel_assert(
       mm_align_check(group->cfg_space_base_padd, _CONFIG_SPACE_ALIGN));
