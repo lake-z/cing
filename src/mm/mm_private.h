@@ -56,7 +56,11 @@ void mm_frame_return(
 
 ucnt_t mm_frame_free_count(void);
 
+/* Whole physical address space will be mapped directly in early bootstrap 
+ * stage. */
 void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end);
+
+/* Bootstrap memory pageing mechanism. */
 void mm_page_init(uptr_t kernel_start,
     uptr_t kernel_end,
     uptr_t boot_stack_bottom,

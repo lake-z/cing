@@ -2,6 +2,7 @@
 #include "log.h"
 #include "mm_private.h"
 
+/* Describes a section of available physical memory. */
 typedef struct {
   uptr_t base;
   usz_t len;
@@ -19,13 +20,15 @@ typedef struct frame_free {
 
 /* Max number of physical memory sections allowed */
 #define _PHY_MEM_SECTION_MAX 1024
+/* All available physical memory sections are saved in this array. */
 base_private phy_mem_section_t _phy_mem_secs[_PHY_MEM_SECTION_MAX];
+/* Element count of array @_phy_mem_secs */
 base_private usz_t _phy_mem_sec_count;
 
 /* Total size of physical memory */
 base_private usz_t _phy_mem_size;
 
-/* Frames can be used during early stage of mm initialization. */
+/* Frames can be used during early stage of mm bootstrap. */
 #define _EARLY_FRAME_CAP 16 * 1024
 byte_t _early_frame_pool[_EARLY_FRAME_CAP * FRAME_SIZE_4K] base_align(4096);
 base_private usz_t _early_frame_count;
@@ -36,6 +39,8 @@ base_private bo_t _is_early_stage;
 base_private uptr_t _free_head;
 base_private ucnt_t _free_count;
 
+/* Initialize avaliable physical memory sections according to Multiboot memory 
+ * map. */
 base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
 {
   u32_t entry_size;

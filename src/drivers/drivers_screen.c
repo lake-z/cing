@@ -1,9 +1,11 @@
 #include "drivers_screen.h"
 #include "containers_string.h"
 #include "drivers_port.h"
+#include "drivers_vesa.h"
 #include "kernel_panic.h"
+#include "log.h"
 
-base_private byte_t *const _video_buffer = (byte_t *)0xB8000;
+base_private byte_t *_video_buffer = (byte_t *)0xB8000;
 base_private const byte_t _CHAR_NULL = 0;
 
 void screen_init()
@@ -180,4 +182,7 @@ void screen_write_byte_hex(byte_t *bytes,
       str_buf_marshal_bytes_in_hex(msg, msg_len, SCREEN_WIDTH, bytes, len);
   msg_len += str_buf_marshal_terminator(msg, msg_len, SCREEN_WIDTH);
   screen_write_str(msg, fg, bg, row, col);
+
+
 }
+

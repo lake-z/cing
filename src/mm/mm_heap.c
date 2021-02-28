@@ -347,6 +347,8 @@ void mm_heap_bootstrap(void)
   _heap_end = VADD_HEAP_START;
 }
 
+#ifdef BUILD_BUILTIN_TEST_ENABLED
+
 base_private void _heap_validate(void)
 {
   block_t *blk;
@@ -363,7 +365,6 @@ base_private void _heap_validate(void)
   }
 }
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
 /* Built-in tests */
 base_private void _test_helper_verify_all_list_class(void)
 {

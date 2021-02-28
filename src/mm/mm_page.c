@@ -2,6 +2,7 @@
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm_private.h"
+#include "drivers_vesa.h"
 
 typedef enum {
   PAGE_SIZE_4K = PAGE_SIZE_VALUE_4K,
@@ -548,6 +549,7 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
   _tab_root_load(_tab_4);
 }
 
+/* Initialize memory for new stack which is located in higher half memory. */
 base_private void _init_stack_memory(
     uptr_t boot_stack_top, uptr_t boot_stack_bottom)
 {
@@ -575,6 +577,17 @@ base_private void _init_stack_memory(
       (byte_t *)&stack_position, stack_len);
 }
 
+/* Initialize frame buffer memory for VESA driver.
+ * Virtual address of frame buffer is always the same as physical memory.
+base_private void _init_vesa_frame_buffer(uptr_t fb, usz_t fb_len)
+{
+  kernel_assert(fb % PAGE_SIZE_4K == 0);
+  for (uptr_t page = fb; page - fb < fb_len; page += PAGE_SIZE_4K) {
+    mm_page_map(page, page);
+  }
+}
+*/
+
 void mm_page_init(uptr_t kernel_start,
     uptr_t kernel_end,
     uptr_t boot_stack_bottom,
@@ -582,6 +595,8 @@ void mm_page_init(uptr_t kernel_start,
 {
   uptr_t unmap;
   uptr_t phy_end = padd_end();
+  uptr_t fb;
+  usz_t fb_len;
 
   kernel_assert(kernel_start < kernel_end);
 
@@ -591,9 +606,16 @@ void mm_page_init(uptr_t kernel_start,
   _test_direct_access();
 #endif
 
+  fb = (uptr_t)d_vesa_get_frame_buffer();
+  fb_len = d_vesa_get_frame_buffer_len();
+  kernel_assert(fb % PAGE_SIZE_2M == 0); /* Only supports 2MB aligned frame buffer */
+
   unmap = mm_align_up(kernel_end + 1, PAGE_SIZE_2M);
   for (; (unmap + PAGE_SIZE_2M) < phy_end; unmap += PAGE_SIZE_2M) {
-    _unmap(unmap, PAGE_SIZE_2M);
+    /* Only unmap memory outside range of frame buffer */
+    if ((unmap > (fb + fb_len)) || ((fb + PAGE_SIZE_2M) < fb)) {
+      _unmap(unmap, PAGE_SIZE_2M);
+    }
   }
 
   kernel_assert(unmap == _early_map_end);

@@ -4,6 +4,7 @@
 #include "drivers_keyboard.h"
 #include "drivers_port.h"
 #include "drivers_screen.h"
+#include "drivers_vesa.h"
 #include "drivers_serial.h"
 #include "drivers_time.h"
 #include "interrupts.h"
@@ -20,6 +21,8 @@ extern uptr_t boot_stack_top;
 void kernal_main(uptr_t multi_boot_info);
 
 #define _MULTI_BOOT_TAG_TYPE_MMAP 6
+#define _MULTI_BOOT_TAG_TYPE_VBE 7
+#define _MULTI_BOOT_TAG_TYPE_FRAME_BUFFER 8
 #define _MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS 9
 #define _MULTI_BOOT_TAG_TYPE_ACPI_OLD 14
 #define _MULTI_BOOT_TAG_TYPE_ACPI_NEW 15
@@ -54,7 +57,9 @@ base_private const byte_t *_multi_boot_info_save_tag(
     break;
   case _MULTI_BOOT_TAG_TYPE_MMAP:
     break;
-  case 8: /* Frame buffer information */
+  case _MULTI_BOOT_TAG_TYPE_VBE:
+    break; 
+  case _MULTI_BOOT_TAG_TYPE_FRAME_BUFFER:
     break;
   case _MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS: /* ELF symbols */
     break;
@@ -101,7 +106,7 @@ base_private void _multi_boot_info_save(
 {
   /* Multiboot 2 boot information is defined by specification:
    * https://www.gnu.org/software/grub/manual/multiboot2/multiboot.html
-   *         #Boot-information-format*/
+   *         #Boot-information-format */
   u32_t reserved;
   u32_t type;
   u32_t size;
@@ -193,6 +198,17 @@ void kernal_main(uptr_t multi_boot_info)
       _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
 
+  kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != NULL);
+  kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != 0);
+  d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER], 
+    _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
+
+  for (u16_t x = 0; x < 500; x++) {
+    for (u16_t y = 0; y < 500; y++) {
+      d_vesa_draw_pixel(x,y,255,0,0);
+    }
+  }
+
   if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL) {
     kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
     acpi_init_new(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW],
@@ -246,3 +262,4 @@ void kernal_main(uptr_t multi_boot_info)
 
   _kernel_halt();
 }
+

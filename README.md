@@ -16,6 +16,8 @@ qemu-system-x86_64
   -device nvme,drive=nvme0,serial=deadbeaf1,max_ioqpairs=8
 ```
 
+## qemu monitor
+
 ```
 info mem
 (Lab 2+) Display mapped virtual memory and permissions. For example,
@@ -30,7 +32,7 @@ mapped read/write and user-accessible, while the memory from 0xefbf8000 to
 ## gdb
 
 ```
-target remote localhost
+target remote localhost:1234
 symbol-file kernel.sym
 ```
 
