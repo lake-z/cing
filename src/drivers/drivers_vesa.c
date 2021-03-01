@@ -32,7 +32,7 @@ void d_vesa_draw_pixel(u16_t x, u16_t y, u8_t red, u8_t green, u8_t blue)
   kernel_assert(x < _width);
   kernel_assert(y < _height);
 
-  idx = (x * _width + y) * _depth;
+  idx = (y * _width + x) * _depth;
   _buf[idx] = blue;
   _buf[idx + 1] = green;
   _buf[idx + 2] = red;
