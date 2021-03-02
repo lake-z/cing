@@ -34,6 +34,7 @@ set(SRC_MODULES
   mm
   panel
   util
+  video
   include
 )
 foreach(MOD ${SRC_MODULES})

@@ -4,14 +4,14 @@
 #include "drivers_keyboard.h"
 #include "drivers_port.h"
 #include "drivers_screen.h"
-#include "drivers_vesa.h"
 #include "drivers_serial.h"
 #include "drivers_time.h"
+#include "drivers_vesa.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm.h"
-#include "panel.h"
+#include "video.h"
 
 /* Defined in boot/boot.asm */
 extern uptr_t boot_stack_bottom;
@@ -58,7 +58,7 @@ base_private const byte_t *_multi_boot_info_save_tag(
   case _MULTI_BOOT_TAG_TYPE_MMAP:
     break;
   case _MULTI_BOOT_TAG_TYPE_VBE:
-    break; 
+    break;
   case _MULTI_BOOT_TAG_TYPE_FRAME_BUFFER:
     break;
   case _MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS: /* ELF symbols */
@@ -200,14 +200,10 @@ void kernal_main(uptr_t multi_boot_info)
 
   kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != NULL);
   kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != 0);
-  d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER], 
-    _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
+  d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER],
+      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
 
-  for (u16_t x = 0; x < 500; x++) {
-    for (u16_t y = 0; y < 500; y++) {
-      d_vesa_draw_pixel(x,y,255,0,0);
-    }
-  }
+  log_enable_video_write();
 
   if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL) {
     kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
@@ -224,7 +220,7 @@ void kernal_main(uptr_t multi_boot_info)
 
   mm_bootstrap((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
 
-  /* Switching from boot time stack to new stack in high half. 
+  /* Switching from boot time stack to new stack in high half.
    * It is safer to do it in kernel_main as it is the entry function of C code,
    * and will never get return. */
   curr_stack_top = (uptr_t)&boot_stack_top;
@@ -262,4 +258,3 @@ void kernal_main(uptr_t multi_boot_info)
 
   _kernel_halt();
 }
-

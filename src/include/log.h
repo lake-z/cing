@@ -12,6 +12,7 @@ typedef enum {
   LOG_LEVEL_FATAL = 5,
 } log_level_t;
 
+void log_enable_video_write(void);
 void log_str_len(log_level_t lv, const ch_t *str, usz_t len);
 void log_str(log_level_t lv, const ch_t *str);
 void log_uint(log_level_t lv, u64_t uval);

@@ -1,8 +1,8 @@
 /* Video Electronics Standards Association video driver. */
 
+#include "drivers_vesa.h"
 #include "kernel_panic.h"
 #include "log.h"
-#include "drivers_vesa.h"
 
 /* Frame buffer address, initialized at legacy VGA address. */
 base_private byte_t *_buf = (byte_t *)0xB8000;
@@ -26,7 +26,7 @@ typedef struct frame_buffer_info {
   u8_t blue_size;
 } base_struct_packed frame_buffer_info_t;
 
-void d_vesa_draw_pixel(u16_t x, u16_t y, u8_t red, u8_t green, u8_t blue)
+void d_vesa_draw_pixel(usz_t x, usz_t y, u8_t red, u8_t green, u8_t blue)
 {
   usz_t idx;
   kernel_assert(x < _width);
@@ -45,18 +45,28 @@ byte_t *d_vesa_get_frame_buffer(void)
 
 usz_t d_vesa_get_frame_buffer_len(void)
 {
-  return _width * _height * _depth; 
+  return _width * _height * _depth;
 }
 
-void d_vesa_bootstrap(const byte_t *fb, usz_t fb_len) 
+usz_t d_vesa_get_width(void)
+{
+  return _width;
+}
+
+usz_t d_vesa_get_height(void)
+{
+  return _height;
+}
+
+void d_vesa_bootstrap(const byte_t *fb, usz_t fb_len)
 {
   frame_buffer_info_t *info = (frame_buffer_info_t *)fb;
 
   kernel_assert(info->colour_type == 1); /* Suports direct RGB only. */
-  kernel_assert(info->depth == 32); /* Supports 32-bit true colour only. */
+  kernel_assert(info->depth == 32);      /* Supports 32-bit true colour only. */
   kernel_assert(info->reserved == 0);
   kernel_assert(fb_len == 30);
- 
+
   _buf = (byte_t *)info->paddr;
   _width = info->width;
   _height = info->height;

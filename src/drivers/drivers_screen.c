@@ -182,7 +182,4 @@ void screen_write_byte_hex(byte_t *bytes,
       str_buf_marshal_bytes_in_hex(msg, msg_len, SCREEN_WIDTH, bytes, len);
   msg_len += str_buf_marshal_terminator(msg, msg_len, SCREEN_WIDTH);
   screen_write_str(msg, fg, bg, row, col);
-
-
 }
-

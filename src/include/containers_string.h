@@ -38,4 +38,5 @@ usz_t str_buf_marshal_bytes_in_hex(ch_t *buf,
 
 usz_t str_buf_marshal_terminator(
     ch_t *buf, const usz_t buf_off, const usz_t buf_len);
+
 #endif

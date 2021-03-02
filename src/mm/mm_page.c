@@ -1,8 +1,8 @@
 #include "cpu.h"
+#include "drivers_vesa.h"
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm_private.h"
-#include "drivers_vesa.h"
 
 typedef enum {
   PAGE_SIZE_4K = PAGE_SIZE_VALUE_4K,
@@ -608,7 +608,8 @@ void mm_page_init(uptr_t kernel_start,
 
   fb = (uptr_t)d_vesa_get_frame_buffer();
   fb_len = d_vesa_get_frame_buffer_len();
-  kernel_assert(fb % PAGE_SIZE_2M == 0); /* Only supports 2MB aligned frame buffer */
+  kernel_assert(
+      fb % PAGE_SIZE_2M == 0); /* Only supports 2MB aligned frame buffer */
 
   unmap = mm_align_up(kernel_end + 1, PAGE_SIZE_2M);
   for (; (unmap + PAGE_SIZE_2M) < phy_end; unmap += PAGE_SIZE_2M) {

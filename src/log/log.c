@@ -1,9 +1,8 @@
 #include "log.h"
 #include "containers_string.h"
-#include "drivers_screen.h"
 #include "drivers_serial.h"
 #include "kernel_panic.h"
-#include "panel.h"
+#include "video.h"
 
 #define _SIZE_COUNT 6
 base_private const u64_t _SIZE_UNITS[_SIZE_COUNT] = {
@@ -24,21 +23,31 @@ base_private const usz_t _LINE_PREFIX_LEVEL_LEN = 6;
 base_private usz_t _screen_row = 0;
 base_private usz_t _screen_col = 0;
 
+base_private bo_t _write_screen = false;
+
+void log_enable_video_write(void)
+{
+  _write_screen = true;
+}
+
 void log_str_len(log_level_t lv, const ch_t *str, usz_t len)
 {
-  usz_t screen_len;
-
-  kernel_assert_d(_screen_col <= SCREEN_WIDTH);
-  if ((SCREEN_WIDTH - _screen_col) < len) {
-    screen_len = SCREEN_WIDTH - _screen_col;
-  } else {
-    screen_len = len;
-  }
-  for (usz_t i = 0; i < screen_len; i++) {
-    screen_write_at((byte_t)str[i], _screen_row, _screen_col++);
-  }
-
   serial_write_str(str, len);
+
+  if (_write_screen) {
+    usz_t write_len;
+    usz_t video_width = video_char_col_max();
+
+    kernel_assert_d(_screen_col <= video_width);
+    if ((video_width - _screen_col) < len) {
+      write_len = video_width - _screen_col;
+    } else {
+      write_len = len;
+    }
+    for (usz_t i = 0; i < write_len; i++) {
+      video_draw_char(_screen_row, _screen_col++, (u8_t)str[i]);
+    }
+  }
 
   base_mark_unuse(lv);
 }
@@ -148,9 +157,10 @@ void _log_line_start(log_level_t lv, const ch_t *file, usz_t line)
 
 void log_line_end(log_level_t lv)
 {
-  _screen_row = (_screen_row + 1) % SCREEN_HEIGHT;
-  _screen_col = 0;
-
+  if (_write_screen) {
+    _screen_row = (_screen_row + 1) % video_char_col_max();
+    _screen_col = 0;
+  }
   serial_write_str("\r\n", 2);
   base_mark_unuse(lv);
 }
