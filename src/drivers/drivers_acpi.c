@@ -85,7 +85,7 @@ base_private void _init_xsdt(xsdt_t *xsdt)
 
     cmp = mm_compare((byte_t *)(h->signature), (byte_t *)"MCFG", 4);
     if (cmp == 0) {
-      pcie_bootstrap((const byte_t *)((uptr_t)h + 44), h->len - 44);
+      d_pcie_bootstrap((const byte_t *)((uptr_t)h + 44), h->len - 44);
     }
     // log_uint(LOG_LEVEL_INFO, ((byte_t *)(xsdt->sdt_ptrs))[i]);
     // log_str_len(LOG_LEVEL_INFO, h->signature, 4);
@@ -157,7 +157,7 @@ base_private void _init_rsdt(byte_t *rsdt)
 
     cmp = mm_compare((byte_t *)(sdt->signature), (byte_t *)"MCFG", 4);
     if (cmp == 0) {
-      pcie_bootstrap((const byte_t *)((uptr_t)sdt + 44), sdt->len - 44);
+      d_pcie_bootstrap((const byte_t *)((uptr_t)sdt + 44), sdt->len - 44);
     }
   }
 }

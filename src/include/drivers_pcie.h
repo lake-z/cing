@@ -3,6 +3,6 @@
 
 #include "base.h"
 
-void pcie_bootstrap(const byte_t *mcfg, usz_t len);
+void d_pcie_bootstrap(const byte_t *mcfg, usz_t len);
 
 #endif
