@@ -1,9 +1,9 @@
-#include "video.h"
 #include "cpu.h"
 #include "drivers_vesa.h"
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm_private.h"
+#include "video.h"
 
 typedef enum {
   PAGE_SIZE_4K = PAGE_SIZE_VALUE_4K,
@@ -293,9 +293,8 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
 }
 
 /* Unmap paging from @va to it's frames. */
-base_private uptr_t _unmap(
-    uptr_t va, /* Virtual address */
-    page_size_t size, /* Page size */
+base_private uptr_t _unmap(uptr_t va, /* Virtual address */
+    page_size_t size,                 /* Page size */
     bo_t free_frame /* If false, the frame will not be freed for reuse. */
 )
 {
@@ -363,7 +362,6 @@ base_private uptr_t _unmap(
     if (free_frame) {
       uptr_t pa_freed;
       uptr_t va_freed;
-
 
       /* Cut a 2M page used in early stage into 512 4K pages, and unmap them one
        * by one. */

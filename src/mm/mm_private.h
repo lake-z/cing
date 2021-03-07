@@ -24,7 +24,8 @@
 #define VADD_STACK_BP_BOTTOM_GUARD                                             \
   (VADD_48_HIGH_START + 255 * PAGE_SIZE_VALUE_4K)
 #define VADD_FRAME_BUFFER (VADD_48_HIGH_START + 256 * PAGE_SIZE_VALUE_4K)
-#define VADD_DIRECT_ACCESS_PAGE (VADD_48_HIGH_START + 4 * 1024 * PAGE_SIZE_VALUE_4K)
+#define VADD_DIRECT_ACCESS_PAGE                                                \
+  (VADD_48_HIGH_START + 4 * 1024 * PAGE_SIZE_VALUE_4K)
 #define VADD_HEAP_START (VADD_DIRECT_ACCESS_PAGE + 1 * PAGE_SIZE_VALUE_4K)
 #define VADD_HIGH_END u64_literal(0xffffffffffffffff)
 

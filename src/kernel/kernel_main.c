@@ -12,6 +12,7 @@
 #include "log.h"
 #include "mm.h"
 #include "video.h"
+#include "tui.h"
 
 /* Defined in boot/boot.asm */
 extern uptr_t boot_stack_bottom;
@@ -250,6 +251,8 @@ void kernal_main(uptr_t multi_boot_info)
 #ifdef BUILD_BUILTIN_TEST_ENABLED
   test_mm();
 #endif
+
+  tui_start();
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "kernel_prototype ended.");
