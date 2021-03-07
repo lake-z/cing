@@ -54,7 +54,7 @@ base_private uptr_t cfg_space_pa(
   kernel_assert(bus < _BUS_MAX);
   kernel_assert(dev < _DEVICE_MAX);
   kernel_assert(fun < _FUNCTION_MAX);
-  kernel_assert(off< 4096);
+  kernel_assert(off < 4096);
 
   pa = group->cfg_space_base_padd | bus << 20 | dev << 15 | fun << 12;
   pa |= off;
@@ -80,7 +80,8 @@ base_private u16_t cfg_space_read_word(
   return *(u16_t *)padd;
 }
 
-base_private u32_t cfg_space_read_dword(group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
+base_private u32_t cfg_space_read_dword(
+    group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   kernel_assert(off % 4 == 0);
   kernel_assert(off <= (_CONFIG_SPACE_SIZE - 4));
@@ -462,12 +463,12 @@ static void bootstrap_fun(group_t *group, u64_t bus, u64_t dev, u64_t fun)
     log_str(LOG_LEVEL_INFO, cname);
     log_str(LOG_LEVEL_INFO, ", ");
     log_str(LOG_LEVEL_INFO, dname);
-   log_line_end(LOG_LEVEL_INFO);
+    log_line_end(LOG_LEVEL_INFO);
 
     log_line_start(LOG_LEVEL_INFO);
     log_str(LOG_LEVEL_INFO, vname);
     log_str(LOG_LEVEL_INFO, ", ");
-     log_str(LOG_LEVEL_INFO, "header_type: ");
+    log_str(LOG_LEVEL_INFO, "header_type: ");
     log_uint(LOG_LEVEL_INFO, header_type);
     log_str(LOG_LEVEL_INFO, ", multi_fun: ");
     log_uint(LOG_LEVEL_INFO, byte_bit_get(header_type, 7));

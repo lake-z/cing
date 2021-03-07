@@ -2,7 +2,6 @@
 #define ___DRIVERS_VESA
 
 #include "base.h"
-#include "drivers_vesa.h"
 
 void d_vesa_bootstrap(
     const byte_t *fb, /* Frame buffer tag from multi boot info. */

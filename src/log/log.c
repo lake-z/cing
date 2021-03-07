@@ -175,7 +175,7 @@ void _log_builtin_test_pass(const ch_t *test_name, const ch_t *file, usz_t line)
 
 void test_log(void)
 {
-  for (usz_t row = 0; row < video_char_row_max(); row ++) {
+  for (usz_t row = 0; row < video_char_row_max(); row++) {
     log_line_start(LOG_LEVEL_DEBUG);
     log_uint(LOG_LEVEL_DEBUG, row);
     log_line_end(LOG_LEVEL_DEBUG);
