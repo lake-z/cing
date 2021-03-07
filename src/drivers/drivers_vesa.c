@@ -43,6 +43,11 @@ byte_t *d_vesa_get_frame_buffer(void)
   return _buf;
 }
 
+void d_vesa_set_frame_buffer(byte_t *fb)
+{
+  _buf = fb;
+}
+
 usz_t d_vesa_get_frame_buffer_len(void)
 {
   return _width * _height * _depth;

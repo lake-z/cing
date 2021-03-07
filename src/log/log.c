@@ -158,7 +158,7 @@ void _log_line_start(log_level_t lv, const ch_t *file, usz_t line)
 void log_line_end(log_level_t lv)
 {
   if (_write_screen) {
-    _screen_row = (_screen_row + 1) % video_char_col_max();
+    _screen_row = (_screen_row + 1) % video_char_row_max();
     _screen_col = 0;
   }
   serial_write_str("\r\n", 2);
@@ -171,4 +171,13 @@ void _log_builtin_test_pass(const ch_t *test_name, const ch_t *file, usz_t line)
   log_str(LOG_LEVEL_BUILTIN_TEST, test_name);
   log_str(LOG_LEVEL_BUILTIN_TEST, " .. Passed.");
   log_line_end(LOG_LEVEL_BUILTIN_TEST);
+}
+
+void test_log(void)
+{
+  for (usz_t row = 0; row < video_char_row_max(); row ++) {
+    log_line_start(LOG_LEVEL_DEBUG);
+    log_uint(LOG_LEVEL_DEBUG, row);
+    log_line_end(LOG_LEVEL_DEBUG);
+  }
 }

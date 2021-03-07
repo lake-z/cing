@@ -32,4 +32,6 @@ void log_line_end(log_level_t lv);
     _log_builtin_test_pass(__FUNCTION__, __FILE__, __LINE__);                  \
   } while (0)
 
+void test_log(void);
+
 #endif

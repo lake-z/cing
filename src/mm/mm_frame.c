@@ -104,29 +104,16 @@ void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len)
   _is_early_stage = true;
 }
 
-// base_private byte_t *_frames_start;
-// void mm_frame_init(u64_t kernel_end)
 void mm_frame_init(void)
 {
-  // uptr_t frame;
-
   kernel_assert(_is_early_stage);
-
-  // _frames_start = (byte_t *)mm_align_up(kernel_end, FRAME_SIZE_4K);
 
   _free_head = UPTR_NULL;
   _free_count = 0;
-
-  /* Last 2MB space is not mapped by the early stage frame manager 
-  for (frame = (uptr_t)_frames_start; (frame + FRAME_SIZE_2M) < padd_end();
-       frame += FRAME_SIZE_4K) {
-    mm_frame_return((byte_t *)frame, frame);
-  }
-  */
   _is_early_stage = false;
 }
 
-base_must_check bo_t mm_frame_get_early(byte_t **out_frame)
+base_must_check bo_t mm_frame_alloc_early(byte_t **out_frame)
 {
   bo_t ok;
 
@@ -142,7 +129,7 @@ base_must_check bo_t mm_frame_get_early(byte_t **out_frame)
   return ok;
 }
 
-base_must_check bo_t mm_frame_get(uptr_t *out_frame)
+base_must_check bo_t mm_frame_alloc(uptr_t *out_frame)
 {
   bo_t ok;
   frame_free_t *free_head_va;
@@ -166,7 +153,7 @@ base_must_check bo_t mm_frame_get(uptr_t *out_frame)
   return ok;
 }
 
-void mm_frame_return(byte_t *frame_va, uptr_t frame_pa)
+void mm_frame_free(byte_t *frame_va, uptr_t frame_pa)
 {
   frame_free_t *free;
 

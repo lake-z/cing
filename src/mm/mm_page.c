@@ -1,3 +1,4 @@
+#include "video.h"
 #include "cpu.h"
 #include "drivers_vesa.h"
 #include "kernel_panic.h"
@@ -193,7 +194,7 @@ base_private bo_t _map_early(uptr_t va, uptr_t pa)
       kernel_assert(_tab_entry_is_zero(entry));
 
       frame = NULL;
-      ok = mm_frame_get_early(&frame);
+      ok = mm_frame_alloc_early(&frame);
       if (ok) {
         kernel_assert(frame != NULL);
         _tab_entry_init(entry, lv, true, true, (uptr_t)frame, PAGE_SIZE_4K);
@@ -238,7 +239,7 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
     /* Allocate free frame at very begin, to avoid the need of more than 1
      * direct access at the same time. */
     if (frame_pa == UPTR_NULL) {
-      ok = mm_frame_get(&frame_pa);
+      ok = mm_frame_alloc(&frame_pa);
       if (!ok) {
         break;
       } else {
@@ -283,7 +284,7 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
 
   if (frame_pa != UPTR_NULL) {
     frame_va = mm_page_direct_access_setup(frame_pa);
-    mm_frame_return(frame_va, frame_pa);
+    mm_frame_free(frame_va, frame_pa);
     frame_va = NULL;
     mm_page_direct_access_reset();
   }
@@ -291,7 +292,12 @@ bo_t mm_page_map(uptr_t va, uptr_t pa)
   return ok;
 }
 
-base_private uptr_t _unmap(uptr_t va, page_size_t size)
+/* Unmap paging from @va to it's frames. */
+base_private uptr_t _unmap(
+    uptr_t va, /* Virtual address */
+    page_size_t size, /* Page size */
+    bo_t free_frame /* If false, the frame will not be freed for reuse. */
+)
 {
   uptr_t tab_pa[5];
   tab_entry_t *tab_va_tmp;
@@ -346,22 +352,27 @@ base_private uptr_t _unmap(uptr_t va, page_size_t size)
     kernel_assert(size == PAGE_SIZE_4K);
     kernel_assert(huge == false);
     kernel_assert(mm_align_check(pa, PAGE_SIZE_4K));
-    mm_frame_return((vptr_t)va, pa);
+    if (free_frame) {
+      mm_frame_free((vptr_t)va, pa);
+    }
   } else if (lv == TAB_LEVEL_2) {
-    uptr_t pa_freed;
-    uptr_t va_freed;
-
     kernel_assert(size == PAGE_SIZE_2M);
     kernel_assert(huge == true);
     kernel_assert(mm_align_check(pa, PAGE_SIZE_2M));
 
-    /* Cut a 2M page used in early stage into 512 4K pages, and unmap them one
-     * by one. */
-    va_freed = va;
-    for (pa_freed = pa; pa_freed < pa + PAGE_SIZE_2M;
-         pa_freed += PAGE_SIZE_4K) {
-      mm_frame_return((vptr_t)va_freed, pa_freed);
-      va_freed += PAGE_SIZE_4K;
+    if (free_frame) {
+      uptr_t pa_freed;
+      uptr_t va_freed;
+
+
+      /* Cut a 2M page used in early stage into 512 4K pages, and unmap them one
+       * by one. */
+      va_freed = va;
+      for (pa_freed = pa; pa_freed < pa + PAGE_SIZE_2M;
+           pa_freed += PAGE_SIZE_4K) {
+        mm_frame_free((vptr_t)va_freed, pa_freed);
+        va_freed += PAGE_SIZE_4K;
+      }
     }
   } else {
     /* We use 2M and 4K pages only */
@@ -377,7 +388,7 @@ base_private uptr_t _unmap(uptr_t va, page_size_t size)
     _tab_entry_zero(entry_va_tmp);
     tab_empty = _tab_is_zero(tab_va_tmp);
     if (tab_empty) {
-      mm_frame_return((vptr_t)tab_va_tmp, tab_pa[lv]);
+      mm_frame_free((vptr_t)tab_va_tmp, tab_pa[lv]);
     }
 
     tab_va_tmp = NULL;
@@ -559,7 +570,7 @@ base_private void _init_stack_memory(
   for (uptr_t page = VADD_STACK_BP_TOP; page <= VADD_STACK_BP_BOTTOM;
        page += PAGE_SIZE_4K) {
     uptr_t frame_pa;
-    bo_t ok = mm_frame_get(&frame_pa);
+    bo_t ok = mm_frame_alloc(&frame_pa);
 
     kernel_assert(ok == true);
 
@@ -579,14 +590,25 @@ base_private void _init_stack_memory(
 
 /* Initialize frame buffer memory for VESA driver.
  * Virtual address of frame buffer is always the same as physical memory.
-base_private void _init_vesa_frame_buffer(uptr_t fb, usz_t fb_len)
+ */
+base_private void _bootstrap_vesa_frame_buffer(uptr_t fb, usz_t fb_len)
 {
+  usz_t map_size = 0;
+  uptr_t va;
+  uptr_t pa;
+
   kernel_assert(fb % PAGE_SIZE_4K == 0);
-  for (uptr_t page = fb; page - fb < fb_len; page += PAGE_SIZE_4K) {
-    mm_page_map(page, page);
+
+  va = VADD_FRAME_BUFFER;
+  pa = fb;
+  while (map_size < fb_len) {
+    bo_t ok = mm_page_map(va + map_size, pa + map_size);
+    kernel_assert(ok == true);
+    map_size += PAGE_SIZE_4K;
   }
+
+  d_vesa_set_frame_buffer((byte_t *)VADD_FRAME_BUFFER);
 }
-*/
 
 void mm_page_init(uptr_t kernel_start,
     uptr_t kernel_end,
@@ -613,14 +635,20 @@ void mm_page_init(uptr_t kernel_start,
 
   unmap = mm_align_up(kernel_end + 1, PAGE_SIZE_2M);
   for (; (unmap + PAGE_SIZE_2M) < phy_end; unmap += PAGE_SIZE_2M) {
+    bo_t free_frame;
     /* Only unmap memory outside range of frame buffer */
     if ((unmap > (fb + fb_len)) || ((fb + PAGE_SIZE_2M) < fb)) {
-      _unmap(unmap, PAGE_SIZE_2M);
+      free_frame = true;
+    } else {
+      free_frame = false;
     }
+
+    _unmap(unmap, PAGE_SIZE_2M, free_frame);
   }
 
   kernel_assert(unmap == _early_map_end);
 
+  _bootstrap_vesa_frame_buffer(fb, fb_len);
   _init_stack_memory(boot_stack_top, boot_stack_bottom);
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
@@ -651,14 +679,14 @@ base_private void _test_paging(void)
   for (usz_t i = 0; i < 10000; i++) {
     uptr_t va = va_start + i * PAGE_SIZE_4K;
     uptr_t frame_pa;
-    bo_t ok = mm_frame_get(&frame_pa);
+    bo_t ok = mm_frame_alloc(&frame_pa);
     kernel_assert(ok == true);
     mm_page_map(va, frame_pa);
   }
 
   for (usz_t i = 10000; i > 0; i--) {
     uptr_t va = va_start + (i - 1) * PAGE_SIZE_4K;
-    _unmap(va, PAGE_SIZE_4K);
+    _unmap(va, PAGE_SIZE_4K, true);
   }
 
   kernel_assert(free_frames == mm_frame_free_count());

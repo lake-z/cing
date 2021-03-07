@@ -12,7 +12,8 @@
  * [*] kernel_start .. kernel_end is a direct mapping
  * [*] VADD_48_HIGH_START .. VADD_48_HIGH_START + 256 pages, the stack
  * [*] VADD_48_HIGH_START + 257 pages: the temporary direct access page
- * [*] VADD_48_HIGH_START + 258 pages...: the heap
+ * [*] ... frame buffer ...
+ * [*] VADD_48_HIGH_START + 4K pages...: the heap
  */
 #define VADD_LOW_START u64_literal(0)
 #define VADD_48_LOW_END u64_literal(0x00007fffffffffff)
@@ -22,8 +23,9 @@
 #define VADD_STACK_BP_BOTTOM (VADD_48_HIGH_START + 254 * PAGE_SIZE_VALUE_4K)
 #define VADD_STACK_BP_BOTTOM_GUARD                                             \
   (VADD_48_HIGH_START + 255 * PAGE_SIZE_VALUE_4K)
-#define VADD_DIRECT_ACCESS_PAGE (VADD_48_HIGH_START + 256 * PAGE_SIZE_VALUE_4K)
-#define VADD_HEAP_START (VADD_48_HIGH_START + 257 * PAGE_SIZE_VALUE_4K)
+#define VADD_FRAME_BUFFER (VADD_48_HIGH_START + 256 * PAGE_SIZE_VALUE_4K)
+#define VADD_DIRECT_ACCESS_PAGE (VADD_48_HIGH_START + 4 * 1024 * PAGE_SIZE_VALUE_4K)
+#define VADD_HEAP_START (VADD_DIRECT_ACCESS_PAGE + 1 * PAGE_SIZE_VALUE_4K)
 #define VADD_HIGH_END u64_literal(0xffffffffffffffff)
 
 bo_t vadd_get_padd(vptr_t va, uptr_t *out_pa);
@@ -38,18 +40,18 @@ void mm_frame_init(void);
  *
  * @Returns: The physical address of free frame, which is the same of virtual
  *           address at this early stage. */
-bo_t mm_frame_get(uptr_t *out_frame) base_must_check;
+bo_t mm_frame_alloc(uptr_t *out_frame) base_must_check;
 
 /* Allocate a free frame
  *
  * @Returns: The physical address of free frame
  */
-bo_t mm_frame_get_early(byte_t **out_frame) base_must_check;
+bo_t mm_frame_alloc_early(byte_t **out_frame) base_must_check;
 
 /* Free a frame. The frame to be freed is pointed by a pointer(virtual address),
  * mm system will gurantee to free page after frame, so the argument will be
  * accessable by pointer. */
-void mm_frame_return(
+void mm_frame_free(
     byte_t *frame_va, /* Virtual address of the frame to be freed */
     uptr_t frame_pa   /* Physical address of the frame to be freed */
 );

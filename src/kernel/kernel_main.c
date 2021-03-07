@@ -203,8 +203,6 @@ void kernal_main(uptr_t multi_boot_info)
   d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
 
-  log_enable_video_write();
-
   if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL) {
     kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
     acpi_init_new(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW],
@@ -220,6 +218,7 @@ void kernal_main(uptr_t multi_boot_info)
 
   mm_bootstrap((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
 
+  log_enable_video_write();
   /* Switching from boot time stack to new stack in high half.
    * It is safer to do it in kernel_main as it is the entry function of C code,
    * and will never get return. */

@@ -191,7 +191,7 @@ base_private bo_t _expand_heap(void)
   kernel_assert_d(_free_list_is_empty(_BLOCK_MAX_CLASS - 1));
   for (heap_add = 0; heap_add < size; heap_add += PAGE_SIZE_VALUE_4K) {
     uptr_t frame_pa = UPTR_NULL;
-    bo_t ok = mm_frame_get(&frame_pa);
+    bo_t ok = mm_frame_alloc(&frame_pa);
 
     kernel_assert_d(ok);
     kernel_assert_d(frame_pa != UPTR_NULL);

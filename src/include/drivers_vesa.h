@@ -10,6 +10,7 @@ void d_vesa_bootstrap(
 );
 
 byte_t *d_vesa_get_frame_buffer(void);
+void d_vesa_set_frame_buffer(byte_t *fb);
 usz_t d_vesa_get_frame_buffer_len(void);
 usz_t d_vesa_get_width(void);
 usz_t d_vesa_get_height(void);
