@@ -6,7 +6,6 @@ extern "C" {
 #endif
 
 #include <errno.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -76,6 +75,8 @@ typedef uintptr_t uptr_t;
 #define base_private static
 #define base_struct_packed __attribute__((packed))
 #define base_align(unit) __attribute__((aligned(unit)))
+#define base_check_format(format_str, args)                                    \
+  __attribute__((format(printf, format_str, args)))
 
 base_no_return _dbg_assert_failed(
     const ch_t *expr, const ch_t *file, u32_t line_no);
@@ -101,7 +102,5 @@ base_no_return _dbg_assert_failed(
 #ifdef __cplusplus
 }
 #endif
-
-typedef va_list varg_t;
 
 #endif

@@ -2,18 +2,18 @@
 #include "cpu.h"
 #include "drivers_acpi.h"
 #include "drivers_keyboard.h"
+#include "drivers_nvme.h"
 #include "drivers_port.h"
 #include "drivers_screen.h"
 #include "drivers_serial.h"
 #include "drivers_time.h"
-#include "drivers_nvme.h"
 #include "drivers_vesa.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm.h"
-#include "video.h"
 #include "tui.h"
+#include "video.h"
 
 /* Defined in boot/boot.asm */
 extern uptr_t boot_stack_bottom;

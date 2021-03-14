@@ -474,7 +474,8 @@ const char *d_pcie_func_get_device_name(d_pcie_func_t *fun)
   return dname;
 }
 
-static void bootstrap_fun(d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun)
+static void bootstrap_fun(
+    d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun)
 {
   u16_t vendor = cfg_space_read_word(group, bus, dev, fun, 0);
 
@@ -487,13 +488,12 @@ static void bootstrap_fun(d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun
 
     f = &_functions[_func_cnt++];
     f->group = group;
-    f->vendor_id = vendor; 
+    f->vendor_id = vendor;
     f->device_id = cfg_space_read_word(group, bus, dev, fun, 2);
     f->header_type = cfg_space_read_byte(group, bus, dev, fun, 0x0E);
     f->base_class = cfg_space_read_byte(group, bus, dev, fun, 11);
     f->sub_class = cfg_space_read_byte(group, bus, dev, fun, 10);
     f->pi = cfg_space_read_byte(group, bus, dev, fun, 9);
-
 
     iden_name(f->vendor_id, f->device_id, &vname, &dname);
     cname = class_name(f->base_class, f->sub_class, f->pi);
@@ -524,7 +524,6 @@ static void bootstrap_fun(d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun
 
     (void)(cfg_space_read_dword);
     (void)(cfg_space_write_dword);
-
   }
 }
 

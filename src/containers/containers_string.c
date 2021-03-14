@@ -1,6 +1,7 @@
 #include "containers_string.h"
 #include "drivers_screen.h"
 #include "kernel_panic.h"
+#include <stdarg.h>
 
 usz_t str_len(const ch_t *str)
 {
@@ -117,6 +118,54 @@ usz_t str_buf_marshal_terminator(
   kernel_assert((buf_len - buf_off) > 1);
   buf[buf_off] = '\0';
   return 1;
+}
+
+base_private usz_t _buf_marshal_format_v(ch_t *buf,
+    const usz_t buf_off,
+    const usz_t buf_len,
+    const ch_t *format,
+    const usz_t format_len,
+    va_list va)
+{
+  usz_t buf_ptr;
+  kernel_assert(buf_off < buf_len);
+
+  buf_ptr = buf_off;
+  for (usz_t i = 0; i < format_len; i++) {
+    if (base_likely(format[i] != '%')) {
+      buf[buf_ptr++] = format[i];
+    } else {
+      i++;
+      if (base_unlikely(format[i] == '%')) {
+        buf[buf_ptr++] = '%';
+      } else if (format[i] == 's') {
+        const ch_t *str = va_arg(va, const char *);
+        usz_t slen =
+            str_buf_marshal_str(buf, buf_ptr, buf_len, str, str_len(str));
+        buf_ptr += slen;
+      } else {
+        kernel_panic("TODO");
+      }
+      kernel_panic("TODO");
+    }
+  }
+
+  kernel_assert(buf_ptr <= buf_len);
+
+  return buf_ptr - buf_off;
+}
+
+base_check_format(4, 5) usz_t str_buf_marshal_format(
+    ch_t *buf, usz_t buf_off, usz_t buf_len, const char *format, ...)
+{
+  usz_t len;
+  va_list list;
+  va_start(list, format);
+  len = _buf_marshal_format_v(
+      buf, buf_off, buf_len, format, str_len(format), list);
+  kernel_assert((buf_off + len) <= buf_len);
+  va_end(list);
+  return len;
 }
 
 bo_t byte_bit_get(byte_t byte, usz_t bit)

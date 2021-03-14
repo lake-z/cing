@@ -8,8 +8,7 @@ base_private const u8_t _CLASS_CODE_BASE = 0x01;
 base_private const u8_t _CLASS_CODE_SUB = 0x08;
 
 typedef struct d_nvme_ctrl d_nvme_ctrl_t;
-struct d_nvme_ctrl
-{
+struct d_nvme_ctrl {
   d_pcie_func_t *pcie;
 };
 
@@ -45,7 +44,8 @@ void d_nvme_bootstrap(void)
   nvme_cnt = 0;
   for (ucnt_t i = 0; i < func_cnt; i++) {
     fun = d_pcie_get_func(i);
-    if (d_pcie_func_get_base_class(fun) == _CLASS_CODE_BASE && d_pcie_func_get_sub_class(fun) == _CLASS_CODE_SUB) {
+    if (d_pcie_func_get_base_class(fun) == _CLASS_CODE_BASE &&
+        d_pcie_func_get_sub_class(fun) == _CLASS_CODE_SUB) {
       log_line_start(LOG_LEVEL_DEBUG);
       log_str(LOG_LEVEL_DEBUG, "Found NVMe function: ");
       log_str(LOG_LEVEL_DEBUG, d_pcie_func_get_vendor_name(fun));
