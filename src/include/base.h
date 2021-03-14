@@ -102,4 +102,6 @@ base_no_return _dbg_assert_failed(
 }
 #endif
 
+typedef va_list varg_t;
+
 #endif

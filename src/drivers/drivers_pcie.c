@@ -4,9 +4,10 @@
 #include "log.h"
 #include "mm.h"
 
-/* Currently supports no more than 64 bus groups, it's not limited by PCIe 
+/* Currently supports no more than 64 bus groups, it's not limited by PCIe
  * spec. */
-#define _GROUP_MAX 64
+#define _GROUP_CAP 8
+#define _FUNCTIONS_CAP 128
 
 /* Every PCIe Function is uniquely identified by the Device it resides within
  * and the Bus to which the Device connects. This unique identifier is commonly 
@@ -20,11 +21,11 @@ base_private u64_t _DEVICE_MAX = 32;
 /* PCIe spec limits up to 8 functions per device. */
 base_private u64_t _FUNCTION_MAX = 8;
 
-/* PCIe config space for every function can be as long as 4KB, and is divided 
+/* PCIe config space for every function can be as long as 4KB, and is divided
  * into 3 sections:
  *  [1] PCI header: 64 bytes
  *  [2] PCI capabilities: 192 bytes
- *  [3] PCIe extended capabilities: Can be as long as 4KB - 256 bytes. 
+ *  [3] PCIe extended capabilities: Can be as long as 4KB - 256 bytes.
  *
  * First access to a Function after a reset condition must be a Configuration
  * read of both bytes of the Vendor ID. */
@@ -34,19 +35,33 @@ base_private uptr_t _CONFIG_SPACE_SIZE = 4096;
  * 256 buses * 32 devices * 8 functions * 4KB. */
 base_private uptr_t _CONFIG_SPACE_ALIGN = 256 * 32 * 8 * 4 * 1024;
 
-typedef struct bus_group {
+struct d_pcie_group {
   uptr_t cfg_space_base_padd;
   u16_t group_no;
   u8_t bus_start;
   u8_t bus_end;
   u32_t reserved;
-} base_struct_packed group_t;
+} base_struct_packed;
 
-base_private group_t _groups[_GROUP_MAX];
+struct d_pcie_func {
+  d_pcie_group_t *group;
+  u16_t vendor_id;
+  u16_t device_id;
+  u8_t header_type;
+  /* PCIe function class code is constitued with base class, sub class and
+   * programming interface. */
+  u8_t base_class;
+  u8_t sub_class;
+  u8_t pi;
+};
+
+base_private d_pcie_group_t _groups[_GROUP_CAP];
 base_private ucnt_t _gropp_cnt;
+base_private d_pcie_func_t _functions[_FUNCTIONS_CAP];
+base_private ucnt_t _func_cnt;
 
 base_private uptr_t cfg_space_pa(
-    group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
+    d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   uptr_t pa;
   kernel_assert(
@@ -62,7 +77,7 @@ base_private uptr_t cfg_space_pa(
 }
 
 base_private byte_t cfg_space_read_byte(
-    group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
+    d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   uptr_t padd;
   kernel_assert(off < _CONFIG_SPACE_SIZE);
@@ -72,7 +87,7 @@ base_private byte_t cfg_space_read_byte(
 }
 
 base_private u16_t cfg_space_read_word(
-    group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
+    d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   kernel_assert(off % 2 == 0);
   kernel_assert(off <= (_CONFIG_SPACE_SIZE - 2));
@@ -81,7 +96,7 @@ base_private u16_t cfg_space_read_word(
 }
 
 base_private u32_t cfg_space_read_dword(
-    group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
+    d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   kernel_assert(off % 4 == 0);
   kernel_assert(off <= (_CONFIG_SPACE_SIZE - 4));
@@ -90,7 +105,7 @@ base_private u32_t cfg_space_read_dword(
 }
 
 base_private void cfg_space_write_dword(
-    group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off, u32_t val)
+    d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off, u32_t val)
 {
   kernel_assert(off % 4 == 0);
   kernel_assert(off <= (4096 - 4));
@@ -422,35 +437,66 @@ static const char *class_name(u8_t base, u8_t sub, u8_t pi)
   return name;
 }
 
-static void bootstrap_nvme(group_t *group, u64_t bus, u64_t dev, u64_t fun)
+ucnt_t d_pcie_get_func_cnt(void)
 {
-  u32_t bar0;
-  cfg_space_write_dword(group, bus, dev, fun, 0x10, 0xFFFFFFFF);
-  bar0 = cfg_space_read_dword(group, bus, dev, fun, 0x10);
-
-  log_line_start(LOG_LEVEL_DEBUG);
-  log_str(LOG_LEVEL_DEBUG, "bar0: ");
-  log_uint(LOG_LEVEL_DEBUG, bar0);
-  log_line_end(LOG_LEVEL_DEBUG);
+  kernel_assert_d(_func_cnt < _FUNCTIONS_CAP);
+  return _func_cnt;
 }
 
-static void bootstrap_fun(group_t *group, u64_t bus, u64_t dev, u64_t fun)
+d_pcie_func_t *d_pcie_get_func(ucnt_t idx)
+{
+  return &_functions[idx];
+}
+
+u8_t d_pcie_func_get_base_class(d_pcie_func_t *fun)
+{
+  return fun->base_class;
+}
+
+u8_t d_pcie_func_get_sub_class(d_pcie_func_t *fun)
+{
+  return fun->sub_class;
+}
+
+const char *d_pcie_func_get_vendor_name(d_pcie_func_t *fun)
+{
+  const char *vname;
+  const char *dname;
+  iden_name(fun->vendor_id, fun->device_id, &vname, &dname);
+  return vname;
+}
+
+const char *d_pcie_func_get_device_name(d_pcie_func_t *fun)
+{
+  const char *vname;
+  const char *dname;
+  iden_name(fun->vendor_id, fun->device_id, &vname, &dname);
+  return dname;
+}
+
+static void bootstrap_fun(d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun)
 {
   u16_t vendor = cfg_space_read_word(group, bus, dev, fun, 0);
 
   /* vender == 0xFFFF means device not present. */
   if (vendor != 0xFFFF) {
+    d_pcie_func_t *f;
     const char *vname;
     const char *dname;
     const char *cname;
-    u16_t device = cfg_space_read_word(group, bus, dev, fun, 2);
-    byte_t header_type = cfg_space_read_byte(group, bus, dev, fun, 0x0E);
-    u8_t base_class = cfg_space_read_byte(group, bus, dev, fun, 11);
-    u8_t sub_class = cfg_space_read_byte(group, bus, dev, fun, 10);
-    u8_t programming_interface = cfg_space_read_byte(group, bus, dev, fun, 9);
 
-    iden_name(vendor, device, &vname, &dname);
-    cname = class_name(base_class, sub_class, programming_interface);
+    f = &_functions[_func_cnt++];
+    f->group = group;
+    f->vendor_id = vendor; 
+    f->device_id = cfg_space_read_word(group, bus, dev, fun, 2);
+    f->header_type = cfg_space_read_byte(group, bus, dev, fun, 0x0E);
+    f->base_class = cfg_space_read_byte(group, bus, dev, fun, 11);
+    f->sub_class = cfg_space_read_byte(group, bus, dev, fun, 10);
+    f->pi = cfg_space_read_byte(group, bus, dev, fun, 9);
+
+
+    iden_name(f->vendor_id, f->device_id, &vname, &dname);
+    cname = class_name(f->base_class, f->sub_class, f->pi);
 
     log_line_start(LOG_LEVEL_INFO);
     log_str(LOG_LEVEL_INFO, "[");
@@ -469,20 +515,20 @@ static void bootstrap_fun(group_t *group, u64_t bus, u64_t dev, u64_t fun)
     log_str(LOG_LEVEL_INFO, vname);
     log_str(LOG_LEVEL_INFO, ", ");
     log_str(LOG_LEVEL_INFO, "header_type: ");
-    log_uint(LOG_LEVEL_INFO, header_type);
+    log_uint(LOG_LEVEL_INFO, f->header_type);
     log_str(LOG_LEVEL_INFO, ", multi_fun: ");
-    log_uint(LOG_LEVEL_INFO, byte_bit_get(header_type, 7));
+    log_uint(LOG_LEVEL_INFO, byte_bit_get(f->header_type, 7));
     log_line_end(LOG_LEVEL_INFO);
 
     kernel_assert(cname != NULL);
 
-    if (base_class == 0x01 && sub_class == 0x08) {
-      bootstrap_nvme(group, bus, dev, fun);
-    }
+    (void)(cfg_space_read_dword);
+    (void)(cfg_space_write_dword);
+
   }
 }
 
-static void bootstrap_dev(group_t *group, u64_t bus, u64_t dev)
+static void bootstrap_dev(d_pcie_group_t *group, u64_t bus, u64_t dev)
 {
   u16_t vendor = cfg_space_read_word(group, bus, dev, 0, 0);
 
@@ -504,12 +550,12 @@ static void bootstrap_dev(group_t *group, u64_t bus, u64_t dev)
 
 void d_pcie_bootstrap(const byte_t *mcfg, usz_t len)
 {
-  kernel_assert(len >= sizeof(group_t));
-  kernel_assert((len % sizeof(group_t)) == 0);
+  kernel_assert(len >= sizeof(d_pcie_group_t));
+  kernel_assert((len % sizeof(d_pcie_group_t)) == 0);
   kernel_assert(mcfg != NULL);
 
-  _gropp_cnt = len / sizeof(group_t);
-  kernel_assert(_gropp_cnt <= _GROUP_MAX);
+  _gropp_cnt = len / sizeof(d_pcie_group_t);
+  kernel_assert(_gropp_cnt <= _GROUP_CAP);
 
   log_line_start(LOG_LEVEL_INFO);
   log_str(LOG_LEVEL_INFO, "PCIe init, MCFG len: ");
@@ -518,8 +564,9 @@ void d_pcie_bootstrap(const byte_t *mcfg, usz_t len)
   log_uint(LOG_LEVEL_INFO, _gropp_cnt);
   log_line_end(LOG_LEVEL_INFO);
 
+  _func_cnt = 0;
   for (ucnt_t i = 0; i < _gropp_cnt; i++) {
-    _groups[i] = *(group_t *)(mcfg + i * sizeof(group_t));
+    _groups[i] = *(d_pcie_group_t *)(mcfg + i * sizeof(d_pcie_group_t));
 
     log_line_start(LOG_LEVEL_INFO);
     log_str(LOG_LEVEL_INFO, "PCIe group ");

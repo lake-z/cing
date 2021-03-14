@@ -6,6 +6,7 @@
 #include "drivers_screen.h"
 #include "drivers_serial.h"
 #include "drivers_time.h"
+#include "drivers_nvme.h"
 #include "drivers_vesa.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
@@ -251,6 +252,8 @@ void kernal_main(uptr_t multi_boot_info)
 #ifdef BUILD_BUILTIN_TEST_ENABLED
   test_mm();
 #endif
+
+  d_nvme_bootstrap();
 
   tui_start();
 
