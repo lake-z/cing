@@ -1,7 +1,21 @@
 #include "containers_string.h"
 #include "drivers_screen.h"
 #include "kernel_panic.h"
-#include <stdarg.h>
+
+#define _SIZE_COUNT 6
+base_private const u64_t _SIZE_UNITS[_SIZE_COUNT] = {
+  u64_literal(1024) * u64_literal(1024) * u64_literal(1024) *
+      u64_literal(1024) * u64_literal(1024) * u64_literal(1024),
+  u64_literal(1024) * u64_literal(1024) * u64_literal(1024) *
+      u64_literal(1024) * u64_literal(1024),
+  u64_literal(1024) * u64_literal(1024) * u64_literal(1024) * u64_literal(1024),
+  1024 * 1024 * 1024,
+  1024 * 1024,
+  1024,
+};
+
+base_private const ch_t *_SIZE_NOTES[_SIZE_COUNT] = { "ZB", "PB", "TB", "GB",
+  "MB", "KB" };
 
 usz_t str_len(const ch_t *str)
 {
@@ -10,6 +24,34 @@ usz_t str_len(const ch_t *str)
     len++;
   }
   return len;
+}
+
+base_private bool str_char_is_digit(ch_t ch)
+{
+  return ch >= '0' && ch <= '9';
+}
+
+base_private u64_t str_char_to_uint(ch_t ch)
+{
+  return (u64_t)(ch - '0');
+}
+
+base_private u64_t str_to_uint(
+    const char *str, const usz_t str_off, const usz_t str_len, usz_t *out_len)
+
+{
+  u64_t val = 0;
+  usz_t str_ptr = str_off;
+  for (; str_ptr < str_len; str_ptr++) {
+    if (str_char_is_digit(str[str_ptr])) {
+      val = val * 10 + str_char_to_uint(str[str_ptr]);
+    } else {
+      break;
+    }
+  }
+  kernel_assert(str_ptr > str_off);
+  *out_len = str_ptr - str_off;
+  return val;
 }
 
 usz_t str_buf_marshal_str(ch_t *buf,
@@ -112,6 +154,35 @@ usz_t str_buf_marshal_uint(
   return digit_cnt;
 }
 
+usz_t str_buf_marshal_uint_in_size(
+    ch_t *buf, const usz_t buf_off, const usz_t buf_len, const u64_t val)
+{
+  usz_t buf_ptr = buf_off;
+
+  kernel_assert(buf_off < buf_len);
+
+  for (usz_t i = 0; i < _SIZE_COUNT; i++) {
+    u64_t part = val / _SIZE_UNITS[i];
+    if (part > 0) {
+      buf_ptr += str_buf_marshal_uint(buf, buf_ptr, buf_len, part);
+      kernel_assert_d((buf_ptr + 2) <= buf_len);
+      str_buf_marshal_str(buf, buf_ptr, buf_len, _SIZE_NOTES[i], 2);
+    }
+  }
+  kernel_assert_d(buf_ptr <= buf_len);
+  return buf_ptr - buf_off;
+}
+
+ch_t *str_buf_marshal_uint_in_size_new(mm_allocator_t *all, const u64_t val)
+{
+  usz_t len;
+  usz_t buf_len = 128;
+  ch_t *ret = (ch_t *)mm_allocate(all, buf_len, 1);
+  len = str_buf_marshal_uint_in_size(ret, 0, buf_len, val);
+  kernel_assert(len < buf_len);
+  return ret;
+}
+
 usz_t str_buf_marshal_terminator(
     ch_t *buf, const usz_t buf_off, const usz_t buf_len)
 {
@@ -120,7 +191,7 @@ usz_t str_buf_marshal_terminator(
   return 1;
 }
 
-base_private usz_t _buf_marshal_format_v(ch_t *buf,
+usz_t str_buf_marshal_format_v(ch_t *buf,
     const usz_t buf_off,
     const usz_t buf_len,
     const ch_t *format,
@@ -131,22 +202,44 @@ base_private usz_t _buf_marshal_format_v(ch_t *buf,
   kernel_assert(buf_off < buf_len);
 
   buf_ptr = buf_off;
-  for (usz_t i = 0; i < format_len; i++) {
-    if (base_likely(format[i] != '%')) {
-      buf[buf_ptr++] = format[i];
+  for (usz_t format_ptr = 0; format_ptr < format_len; format_ptr++) {
+    if (base_likely(format[format_ptr] != '%')) {
+      buf[buf_ptr++] = format[format_ptr];
     } else {
-      i++;
-      if (base_unlikely(format[i] == '%')) {
+      format_ptr++;
+      if (base_unlikely(format[format_ptr] == '%')) {
         buf[buf_ptr++] = '%';
-      } else if (format[i] == 's') {
+      } else if (format[format_ptr] == 's') {
         const ch_t *str = va_arg(va, const char *);
-        usz_t slen =
+        buf_ptr +=
             str_buf_marshal_str(buf, buf_ptr, buf_len, str, str_len(str));
-        buf_ptr += slen;
+      } else if (format[format_ptr] == 'l') {
+        format_ptr++;
+        if (format[format_ptr] == 'u') {
+          u64_t uval = va_arg(va, u64_t);
+          buf_ptr += str_buf_marshal_uint(buf, buf_ptr, buf_len, uval);
+        } else {
+          kernel_panic("TODO");
+        }
+      } else if (format[format_ptr] == '.') {
+        const ch_t *str;
+        usz_t strlen;
+        usz_t strlenlen;
+        format_ptr++;
+        strlen = str_to_uint(format, format_ptr, format_len, &strlenlen);
+        format_ptr += strlenlen;
+        str = va_arg(va, const char *);
+        for (usz_t str_ptr = 0; str_ptr < strlen; str_ptr++) {
+          if (str[str_ptr] == '\0') {
+            break;
+          } else {
+            kernel_assert(buf_ptr < buf_len);
+            buf[buf_ptr++] = str[str_ptr];
+          }
+        }
       } else {
         kernel_panic("TODO");
       }
-      kernel_panic("TODO");
     }
   }
 
@@ -161,7 +254,7 @@ base_check_format(4, 5) usz_t str_buf_marshal_format(
   usz_t len;
   va_list list;
   va_start(list, format);
-  len = _buf_marshal_format_v(
+  len = str_buf_marshal_format_v(
       buf, buf_off, buf_len, format, str_len(format), list);
   kernel_assert((buf_off + len) <= buf_len);
   va_end(list);

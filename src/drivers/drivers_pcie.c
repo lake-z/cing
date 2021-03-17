@@ -186,10 +186,7 @@ static const char *device_name_8086(u16_t vendor, u16_t device)
     name = "Cannon Point-LP Thermal Controller";
     break;
   default:
-    log_line_start(LOG_LEVEL_DEBUG);
-    log_str(LOG_LEVEL_INFO, "Unknown device: ");
-    log_uint(LOG_LEVEL_INFO, device);
-    log_line_end(LOG_LEVEL_DEBUG);
+    log_line_format(LOG_LEVEL_DEBUG, "Unknown device: %lu", (u64_t)device);
     name = "Unknown";
     break;
   }
@@ -206,10 +203,7 @@ static const char *device_name_1234(u16_t vendor, u16_t device)
     name = "QEMU Virtual Video Controller";
     break;
   default:
-    log_line_start(LOG_LEVEL_DEBUG);
-    log_str(LOG_LEVEL_INFO, "Unknown device: ");
-    log_uint(LOG_LEVEL_INFO, device);
-    log_line_end(LOG_LEVEL_DEBUG);
+    log_line_format(LOG_LEVEL_DEBUG, "Unknown device: %lu", (u64_t)device);
     name = "Unknown";
     break;
   }
@@ -239,18 +233,12 @@ static void iden_name(
 
   if (*vname == NULL) {
     *vname = "Unknown vendor";
-    log_line_start(LOG_LEVEL_WARN);
-    log_str(LOG_LEVEL_WARN, "Unknown vendor: ");
-    log_uint(LOG_LEVEL_WARN, vendor);
-    log_line_end(LOG_LEVEL_WARN);
+    log_line_format(LOG_LEVEL_WARN, "Unknown vendor: %lu", (u64_t)vendor);
   }
 
   if (*dname == NULL) {
     *dname = "Unknown device";
-    log_line_start(LOG_LEVEL_WARN);
-    log_str(LOG_LEVEL_WARN, "Unknown device: ");
-    log_uint(LOG_LEVEL_WARN, device);
-    log_line_end(LOG_LEVEL_WARN);
+    log_line_format(LOG_LEVEL_WARN, "Unknown vendor: %lu", (u64_t)device);
   }
 }
 
@@ -413,24 +401,8 @@ static const char *class_name(u8_t base, u8_t sub, u8_t pi)
   }
 
   if (name == NULL) {
-    static const usz_t msg_len = 256;
-    char msg[msg_len];
-    const char *msg_part = "Unknown class code: ";
-    usz_t off =
-        str_buf_marshal_str(msg, 0, msg_len, msg_part, str_len(msg_part));
-    off += str_buf_marshal_uint(msg, off, msg_len, base);
-    msg_part = ", ";
-    off += str_buf_marshal_str(msg, off, msg_len, msg_part, str_len(msg_part));
-    off += str_buf_marshal_uint(msg, off, msg_len, sub);
-    msg_part = ", ";
-    off += str_buf_marshal_str(msg, off, msg_len, msg_part, str_len(msg_part));
-    off += str_buf_marshal_uint(msg, off, msg_len, pi);
-    off += str_buf_marshal_terminator(msg, off, msg_len);
-
-    log_line_start(LOG_LEVEL_WARN);
-    log_str(LOG_LEVEL_WARN, msg);
-    log_line_end(LOG_LEVEL_WARN);
-
+    log_line_format(LOG_LEVEL_WARN, "Unknown class code: %lu,%lu,%lu",
+        (u64_t)base, (u64_t)sub, (u64_t)pi);
     name = "Unknown class";
   }
 
@@ -498,27 +470,10 @@ static void bootstrap_fun(
     iden_name(f->vendor_id, f->device_id, &vname, &dname);
     cname = class_name(f->base_class, f->sub_class, f->pi);
 
-    log_line_start(LOG_LEVEL_INFO);
-    log_str(LOG_LEVEL_INFO, "[");
-    log_uint(LOG_LEVEL_INFO, bus);
-    log_str(LOG_LEVEL_INFO, ",");
-    log_uint(LOG_LEVEL_INFO, dev);
-    log_str(LOG_LEVEL_INFO, ",");
-    log_uint(LOG_LEVEL_INFO, fun);
-    log_str(LOG_LEVEL_INFO, "]: ");
-    log_str(LOG_LEVEL_INFO, cname);
-    log_str(LOG_LEVEL_INFO, ", ");
-    log_str(LOG_LEVEL_INFO, dname);
-    log_line_end(LOG_LEVEL_INFO);
-
-    log_line_start(LOG_LEVEL_INFO);
-    log_str(LOG_LEVEL_INFO, vname);
-    log_str(LOG_LEVEL_INFO, ", ");
-    log_str(LOG_LEVEL_INFO, "header_type: ");
-    log_uint(LOG_LEVEL_INFO, f->header_type);
-    log_str(LOG_LEVEL_INFO, ", multi_fun: ");
-    log_uint(LOG_LEVEL_INFO, byte_bit_get(f->header_type, 7));
-    log_line_end(LOG_LEVEL_INFO);
+    log_line_format(LOG_LEVEL_INFO, "[%lu,%lu,%lu]: %s, %s", (u64_t)bus,
+        (u64_t)dev, (u64_t)fun, cname, dname);
+    log_line_format(LOG_LEVEL_INFO, "%s, header_type: %lu, multi_fun: %lu",
+        vname, (u64_t)f->header_type, (u64_t)byte_bit_get(f->header_type, 7));
 
     kernel_assert(cname != NULL);
 
@@ -556,25 +511,15 @@ void d_pcie_bootstrap(const byte_t *mcfg, usz_t len)
   _gropp_cnt = len / sizeof(d_pcie_group_t);
   kernel_assert(_gropp_cnt <= _GROUP_CAP);
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "PCIe init, MCFG len: ");
-  log_uint(LOG_LEVEL_INFO, len);
-  log_str(LOG_LEVEL_INFO, ", group count: ");
-  log_uint(LOG_LEVEL_INFO, _gropp_cnt);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "PCIe init, MCFG len: %lu, group count: %lu",
+      len, _gropp_cnt);
 
   _func_cnt = 0;
   for (ucnt_t i = 0; i < _gropp_cnt; i++) {
     _groups[i] = *(d_pcie_group_t *)(mcfg + i * sizeof(d_pcie_group_t));
 
-    log_line_start(LOG_LEVEL_INFO);
-    log_str(LOG_LEVEL_INFO, "PCIe group ");
-    log_uint(LOG_LEVEL_INFO, _groups[i].group_no);
-    log_str(LOG_LEVEL_INFO, " cfg space: ");
-    log_uint_of_size(LOG_LEVEL_INFO, _groups[i].cfg_space_base_padd);
     kernel_assert(
         mm_align_check(_groups[i].cfg_space_base_padd, _CONFIG_SPACE_ALIGN));
-    log_line_end(LOG_LEVEL_INFO);
 
     for (u64_t bus = _groups[i].bus_start; bus < _groups[i].bus_end; bus++) {
       for (u64_t dev = 0; dev < 32; dev++) {

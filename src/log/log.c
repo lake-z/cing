@@ -4,18 +4,6 @@
 #include "kernel_panic.h"
 #include "video.h"
 
-#define _SIZE_COUNT 6
-base_private const u64_t _SIZE_UNITS[_SIZE_COUNT] = {
-  u64_literal(1024) * u64_literal(1024) * u64_literal(1024) *
-      u64_literal(1024) * u64_literal(1024) * u64_literal(1024),
-  u64_literal(1024) * u64_literal(1024) * u64_literal(1024) *
-      u64_literal(1024) * u64_literal(1024),
-  u64_literal(1024) * u64_literal(1024) * u64_literal(1024) * u64_literal(1024),
-  1024 * 1024 * 1024, 1024 * 1024, 1024
-};
-
-base_private const ch_t *_SIZE_NOTES[_SIZE_COUNT] = { "ZB", "PB", "TB", "GB",
-  "MB", "KB" };
 base_private const ch_t *_LINE_PREFIX_LEVEL[LOG_LEVEL_FATAL + 1] = { "[BTE]",
   "[DBG]", "[INF]", "[WRN]", "[ERR]", "[FAT]" };
 base_private const usz_t _LINE_PREFIX_LEVEL_LEN = 6;
@@ -30,7 +18,7 @@ void log_enable_video_write(void)
   _write_screen = true;
 }
 
-void log_str_len(log_level_t lv, const ch_t *str, usz_t len)
+base_private void log_str_len(log_level_t lv, const ch_t *str, usz_t len)
 {
   serial_write_str(str, len);
 
@@ -52,32 +40,17 @@ void log_str_len(log_level_t lv, const ch_t *str, usz_t len)
   base_mark_unuse(lv);
 }
 
-void log_str(log_level_t lv, const ch_t *str)
+base_private void log_str(log_level_t lv, const ch_t *str)
 {
   log_str_len(lv, str, str_len(str));
 }
 
-void log_uint(log_level_t lv, u64_t uval)
+base_private void log_uint(log_level_t lv, u64_t uval)
 {
   const usz_t _MSG_CAP = 64;
   ch_t msg[_MSG_CAP];
   usz_t msg_len = str_buf_marshal_uint(msg, 0, _MSG_CAP, uval);
   log_str_len(lv, msg, msg_len);
-}
-
-void log_uint_of_size(log_level_t lv, u64_t uval)
-{
-  for (usz_t i = 0; i < _SIZE_COUNT; i++) {
-    if ((uval / _SIZE_UNITS[i]) > 0) {
-      log_uint(lv, uval / _SIZE_UNITS[i]);
-      log_str_len(lv, _SIZE_NOTES[i], 2);
-    }
-    uval = uval % _SIZE_UNITS[i];
-  }
-
-  if ((uval % _SIZE_UNITS[0]) > 0) {
-    log_uint(lv, uval % _SIZE_UNITS[0]);
-  }
 }
 
 base_private const ch_t *_file_strip(const ch_t *file)
@@ -145,7 +118,7 @@ base_private const ch_t *_file_strip(const ch_t *file)
   return res;
 }
 
-void _log_line_start(log_level_t lv, const ch_t *file, usz_t line)
+base_private void _log_line_start(log_level_t lv, const ch_t *file, usz_t line)
 {
   log_str_len(lv, _LINE_PREFIX_LEVEL[lv], _LINE_PREFIX_LEVEL_LEN);
   log_str_len(lv, " ", 1);
@@ -155,7 +128,7 @@ void _log_line_start(log_level_t lv, const ch_t *file, usz_t line)
   log_str_len(lv, " ", 1);
 }
 
-void log_line_end(log_level_t lv)
+base_private void _log_line_end(log_level_t lv)
 {
   if (_write_screen) {
     _screen_row = (_screen_row + 1) % video_char_row_max();
@@ -170,14 +143,25 @@ void _log_builtin_test_pass(const ch_t *test_name, const ch_t *file, usz_t line)
   _log_line_start(LOG_LEVEL_BUILTIN_TEST, file, line);
   log_str(LOG_LEVEL_BUILTIN_TEST, test_name);
   log_str(LOG_LEVEL_BUILTIN_TEST, " .. Passed.");
-  log_line_end(LOG_LEVEL_BUILTIN_TEST);
+  _log_line_end(LOG_LEVEL_BUILTIN_TEST);
 }
 
-void test_log(void)
+void _log_line_format_v(
+    log_level_t lv, const ch_t *file, usz_t line, const ch_t *format, ...)
 {
-  for (usz_t row = 0; row < video_char_row_max(); row++) {
-    log_line_start(LOG_LEVEL_DEBUG);
-    log_uint(LOG_LEVEL_DEBUG, row);
-    log_line_end(LOG_LEVEL_DEBUG);
-  }
+  base_private const usz_t BUF_CAP = 256;
+  ch_t buf[BUF_CAP];
+  usz_t buf_len;
+  va_list list;
+
+  _log_line_start(lv, file, line);
+
+  va_start(list, format);
+  buf_len =
+      str_buf_marshal_format_v(buf, 0, BUF_CAP, format, str_len(format), list);
+  va_end(list);
+
+  log_str_len(lv, buf, buf_len);
+
+  _log_line_end(lv);
 }

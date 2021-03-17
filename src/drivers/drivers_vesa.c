@@ -79,14 +79,6 @@ void d_vesa_bootstrap(const byte_t *fb, usz_t fb_len)
   kernel_assert(_depth % 8 == 0);
   _depth = _depth / 8;
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "Frame buffer: ");
-  log_uint(LOG_LEVEL_INFO, _width);
-  log_str(LOG_LEVEL_INFO, ", ");
-  log_uint(LOG_LEVEL_INFO, _height);
-  log_str(LOG_LEVEL_INFO, ", ");
-  log_uint(LOG_LEVEL_INFO, _depth);
-  log_str(LOG_LEVEL_INFO, ": ");
-  log_uint_of_size(LOG_LEVEL_INFO, (uptr_t)_buf);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "Frame buffer: %lux%lu, %lu, pa: %lu", _width,
+      _height, _depth, (uptr_t)_buf);
 }

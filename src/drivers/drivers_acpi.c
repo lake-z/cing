@@ -48,28 +48,16 @@ base_private void _init_xsdt(xsdt_t *xsdt)
 {
   usz_t entry_cnt;
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "XSDT signature: ");
-  log_str_len(LOG_LEVEL_INFO, xsdt->header.signature, 4);
-  log_line_end(LOG_LEVEL_INFO);
-
   // FIXME: Verify checksum
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "XSDT length: ");
-  log_uint(LOG_LEVEL_INFO, xsdt->header.len);
-  log_str(LOG_LEVEL_INFO, ", header: ");
-  log_uint(LOG_LEVEL_INFO, sizeof(xsdt_t));
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "XSDT length: %lu, header: %lu",
+      (u64_t)(xsdt->header.len), sizeof(xsdt_t));
 
   entry_cnt = xsdt->header.len - sizeof(xsdt_t);
   kernel_assert((entry_cnt % 8) == 0);
   entry_cnt /= 8;
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "XSDT entry count: ");
-  log_uint(LOG_LEVEL_INFO, entry_cnt);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "XSDT entry count: %lu", entry_cnt);
 
   for (usz_t i = 0; i < entry_cnt; i++) {
     i64_t cmp;
@@ -77,18 +65,12 @@ base_private void _init_xsdt(xsdt_t *xsdt)
     sdt_header_t *h =
         *(sdt_header_t **)(((uptr_t)xsdt) + sizeof(xsdt_t) + i * 8);
 
-    log_line_start(LOG_LEVEL_INFO);
-    log_uint(LOG_LEVEL_INFO, i);
-    log_str(LOG_LEVEL_INFO, ": ");
-    log_str_len(LOG_LEVEL_INFO, h->signature, 4);
-    log_line_end(LOG_LEVEL_INFO);
+    log_line_format(LOG_LEVEL_INFO, "%lu: %s", i, h->signature);
 
     cmp = mm_compare((byte_t *)(h->signature), (byte_t *)"MCFG", 4);
     if (cmp == 0) {
       d_pcie_bootstrap((const byte_t *)((uptr_t)h + 44), h->len - 44);
     }
-    // log_uint(LOG_LEVEL_INFO, ((byte_t *)(xsdt->sdt_ptrs))[i]);
-    // log_str_len(LOG_LEVEL_INFO, h->signature, 4);
   }
 }
 
@@ -104,24 +86,17 @@ void acpi_init_new(const byte_t *multi_boot_info, usz_t len)
       (const rsdp_descriptor_2_t *)multi_boot_info;
   base_mark_unuse(len);
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "ACPI 64 signature: ");
-  log_str_len(LOG_LEVEL_INFO, rsdp->v1_fields.signature, 8);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(
+      LOG_LEVEL_INFO, "ACPI 64 signature: %s", rsdp->v1_fields.signature);
+  log_line_format(
+      LOG_LEVEL_INFO, "ACPI 64 revision: %lu", (u64_t)rsdp->v1_fields.revision);
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "ACPI 64 revision: ");
-  log_uint(LOG_LEVEL_INFO, rsdp->v1_fields.revision);
-  log_line_end(LOG_LEVEL_INFO);
   // kernel_assert(revision == 2);
 
   //FIXME: Verify checksum!
   //FIXME: Verify length!
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "ACPI 64 XSDT paddr: ");
-  log_uint_of_size(LOG_LEVEL_INFO, rsdp->xsdt_padd);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "ACPI 64 XSDT paddr: %lu", rsdp->xsdt_padd);
 
   _init_xsdt((xsdt_t *)(rsdp->xsdt_padd));
 
@@ -133,27 +108,18 @@ void acpi_init_new(const byte_t *multi_boot_info, usz_t len)
  *****************************************************************************/
 base_private void _init_rsdt(byte_t *rsdt)
 {
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "ACPI init RSDT, ");
-
   sdt_header_t *sdt = (sdt_header_t *)rsdt;
   usz_t entry_cnt = (sdt->len - sizeof(sdt_header_t)) / 4;
 
-  log_str(LOG_LEVEL_INFO, "signature: ");
-  log_str_len(LOG_LEVEL_INFO, sdt->signature, 4);
-  log_str(LOG_LEVEL_INFO, ", ");
-  log_uint(LOG_LEVEL_INFO, entry_cnt);
-  log_str(LOG_LEVEL_INFO, " SDTs found: ");
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(
+      LOG_LEVEL_INFO, "ACPI init RSDT, %lu SDTs found: ", entry_cnt);
 
   for (usz_t i = 0; i < entry_cnt; i++) {
     u32_t ptr32 = *(u32_t *)(rsdt + sizeof(sdt_header_t) + i * 4);
     i64_t cmp;
 
     sdt = (sdt_header_t *)(uptr_t)ptr32;
-    log_line_start(LOG_LEVEL_INFO);
-    log_str_len(LOG_LEVEL_INFO, sdt->signature, 4);
-    log_line_end(LOG_LEVEL_INFO);
+    log_line_format(LOG_LEVEL_INFO, "signature: %.4s", sdt->signature);
 
     cmp = mm_compare((byte_t *)(sdt->signature), (byte_t *)"MCFG", 4);
     if (cmp == 0) {
@@ -172,10 +138,7 @@ void acpi_init_old(const byte_t *multi_boot_info, usz_t len)
 
   /* Multi boot info is pointing to a RSDP (Root System Description Pointer) */
   signature = (const ch_t *)ptr;
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "ACPI signature: ");
-  log_str_len(LOG_LEVEL_INFO, signature, 8);
-  log_line_end(LOG_LEVEL_INFO);
+  base_mark_unuse(signature);
   ptr += 8;
 
   /* Checksum, TODO: Verify checksum */
@@ -186,10 +149,7 @@ void acpi_init_old(const byte_t *multi_boot_info, usz_t len)
 
   revision = *(const u8_t *)ptr;
   ptr += 1;
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "ACPI revision: ");
-  log_uint(LOG_LEVEL_INFO, revision);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "ACPI revision: %lu", (u64_t)revision);
   kernel_assert(revision == 0);
 
   rsdt_addr = *(const u32_t *)ptr;

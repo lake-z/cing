@@ -130,12 +130,8 @@ base_private void _init_kernel_elf_symbols(
   kernel_assert((uptr_t)mm_early_bootstrap > _kernel_start);
   kernel_assert(padd_range_valid(_kernel_start, _kernel_end));
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "kernel start: ");
-  log_uint_of_size(LOG_LEVEL_INFO, _kernel_start);
-  log_str(LOG_LEVEL_INFO, ", end: ");
-  log_uint_of_size(LOG_LEVEL_INFO, _kernel_end);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "kernel start: %lu, end: %lu", _kernel_start,
+      _kernel_end);
 }
 
 void mm_early_bootstrap(const byte_t *kernel_elf_info,
@@ -155,11 +151,9 @@ void mm_bootstrap(uptr_t boot_stack_bottom, uptr_t boot_stack_top)
   mm_heap_bootstrap();
   mm_allocator_bootstrap();
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "mm initialize finished, ");
-  log_uint(LOG_LEVEL_INFO, mm_frame_free_count());
-  log_str(LOG_LEVEL_INFO, " free frames available. ");
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO,
+      "mm initialize finished, %lu free frames available.",
+      mm_frame_free_count());
 }
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED

@@ -68,17 +68,8 @@ base_no_return _kernel_panic(const char *file, usz_t line, const char *msg)
   screen_write_str(
       ln_str, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, SCREEN_HEIGHT - 1, 0);
 
-  log_line_start(LOG_LEVEL_FATAL);
-  log_str(LOG_LEVEL_FATAL, "Kernel panic! ");
-  log_str(LOG_LEVEL_FATAL, msg);
-  log_line_end(LOG_LEVEL_FATAL);
-
-  log_line_start(LOG_LEVEL_FATAL);
-  log_str(LOG_LEVEL_FATAL, "File: ");
-  log_str(LOG_LEVEL_FATAL, file);
-  log_str(LOG_LEVEL_FATAL, ", line: ");
-  log_uint(LOG_LEVEL_FATAL, line);
-  log_line_end(LOG_LEVEL_FATAL);
+  log_line_format(LOG_LEVEL_FATAL, "Kernel panic! %s", msg);
+  log_line_format(LOG_LEVEL_FATAL, "File: %s, line:%lu ", file, line);
 
   while (1) {
     __asm__("hlt");
@@ -106,17 +97,9 @@ base_no_return _kernel_assert_fail(
   screen_write_str(
       ln_str, SCREEN_COLOR_WHITE, SCREEN_COLOR_RED, SCREEN_HEIGHT - 1, 0);
 
-  log_line_start(LOG_LEVEL_FATAL);
-  log_str(LOG_LEVEL_FATAL, "Kernel assertion failure! Expression: ");
-  log_str(LOG_LEVEL_FATAL, expr);
-  log_line_end(LOG_LEVEL_FATAL);
-
-  log_line_start(LOG_LEVEL_FATAL);
-  log_str(LOG_LEVEL_FATAL, "File: ");
-  log_str(LOG_LEVEL_FATAL, file);
-  log_str(LOG_LEVEL_FATAL, ", line: ");
-  log_uint(LOG_LEVEL_FATAL, line);
-  log_line_end(LOG_LEVEL_FATAL);
+  log_line_format(
+      LOG_LEVEL_FATAL, "Kernel assertion failure! Expression: %s", expr);
+  log_line_format(LOG_LEVEL_FATAL, "File: %s, line: %lu", file, line);
 
   while (1) {
     __asm__("hlt");

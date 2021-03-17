@@ -91,10 +91,7 @@ base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
     }
   }
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "Physical memory size: ");
-  log_uint_of_size(LOG_LEVEL_INFO, _phy_mem_size);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "Physical memory size: %lu", _phy_mem_size);
 }
 
 void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len)

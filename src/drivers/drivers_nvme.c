@@ -46,12 +46,8 @@ void d_nvme_bootstrap(void)
     fun = d_pcie_get_func(i);
     if (d_pcie_func_get_base_class(fun) == _CLASS_CODE_BASE &&
         d_pcie_func_get_sub_class(fun) == _CLASS_CODE_SUB) {
-      log_line_start(LOG_LEVEL_DEBUG);
-      log_str(LOG_LEVEL_DEBUG, "Found NVMe function: ");
-      log_str(LOG_LEVEL_DEBUG, d_pcie_func_get_vendor_name(fun));
-      log_str(LOG_LEVEL_DEBUG, ", ");
-      log_str(LOG_LEVEL_DEBUG, d_pcie_func_get_device_name(fun));
-      log_line_end(LOG_LEVEL_DEBUG);
+      log_line_format(LOG_LEVEL_DEBUG, "NVMe func found: %s, %s",
+          d_pcie_func_get_vendor_name(fun), d_pcie_func_get_device_name(fun));
       nvme_cnt++;
     }
   }

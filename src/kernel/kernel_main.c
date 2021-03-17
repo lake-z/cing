@@ -180,14 +180,8 @@ void kernal_main(uptr_t multi_boot_info)
   screen_init();
   serial_init();
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "kernel_prototype started..");
-  log_line_end(LOG_LEVEL_INFO);
-
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "git revision: ");
-  log_str(LOG_LEVEL_INFO, BUILD_GIT_REVISION);
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "inSilicon started..");
+  log_line_format(LOG_LEVEL_INFO, "git revision: %s", BUILD_GIT_REVISION);
 
   _multi_boot_info_save(&_boot_info, (const byte_t *)multi_boot_info);
 
@@ -257,9 +251,7 @@ void kernal_main(uptr_t multi_boot_info)
 
   tui_start();
 
-  log_line_start(LOG_LEVEL_INFO);
-  log_str(LOG_LEVEL_INFO, "kernel_prototype ended.");
-  log_line_end(LOG_LEVEL_INFO);
+  log_line_format(LOG_LEVEL_INFO, "inSilicon ended.");
 
   _kernel_halt();
 }
