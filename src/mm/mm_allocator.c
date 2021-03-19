@@ -54,6 +54,10 @@ mm_allocator_t *mm_allocator_new(void)
     usz_t heap_len;
     uptr_t heap = (uptr_t)mm_heap_alloc_minimum(&heap_len);
     all = (mm_allocator_t *)mm_align_up(heap, sizeof(mm_allocator_t *));
+    kernel_assert_d(((uptr_t)all + sizeof(mm_allocator_t) - heap) <= heap_len);
+
+    /* Divide allocate memory block into a lot of allocator structures to be 
+     * used later. */
     while (((uptr_t)all + sizeof(mm_allocator_t) - heap) <= heap_len) {
       all->next_free = _free_alls;
       _free_alls = all;
