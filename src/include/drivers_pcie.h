@@ -15,4 +15,9 @@ u8_t d_pcie_func_get_sub_class(d_pcie_func_t *fun);
 const char *d_pcie_func_get_vendor_name(d_pcie_func_t *fun);
 const char *d_pcie_func_get_device_name(d_pcie_func_t *fun);
 
+byte_t d_pcie_cfg_space_read_byte(d_pcie_func_t *fun, u64_t off);
+u16_t d_pcie_cfg_space_read_word(d_pcie_func_t *fun, u64_t off);
+u32_t d_pcie_cfg_space_read_dword(d_pcie_func_t *fun, u64_t off);
+void d_pcie_cfg_space_write_dword(d_pcie_func_t *fun, u64_t off, u32_t val);
+
 #endif

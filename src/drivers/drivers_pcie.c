@@ -45,6 +45,9 @@ struct d_pcie_group {
 
 struct d_pcie_func {
   d_pcie_group_t *group;
+  u64_t bus;
+  u64_t dev;
+  u64_t fun;
   u16_t vendor_id;
   u16_t device_id;
   u8_t header_type;
@@ -60,7 +63,7 @@ base_private ucnt_t _gropp_cnt;
 base_private d_pcie_func_t _functions[_FUNCTIONS_CAP];
 base_private ucnt_t _func_cnt;
 
-base_private uptr_t cfg_space_pa(
+base_private uptr_t _cfg_space_pa(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   uptr_t pa;
@@ -76,40 +79,40 @@ base_private uptr_t cfg_space_pa(
   return pa;
 }
 
-base_private byte_t cfg_space_read_byte(
+base_private byte_t _cfg_space_read_byte(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   uptr_t padd;
   kernel_assert(off < _CONFIG_SPACE_SIZE);
 
-  padd = cfg_space_pa(group, bus, dev, fun, off);
+  padd = _cfg_space_pa(group, bus, dev, fun, off);
   return *(byte_t *)padd;
 }
 
-base_private u16_t cfg_space_read_word(
+base_private u16_t _cfg_space_read_word(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   kernel_assert(off % 2 == 0);
   kernel_assert(off <= (_CONFIG_SPACE_SIZE - 2));
-  uptr_t padd = cfg_space_pa(group, bus, dev, fun, off);
+  uptr_t padd = _cfg_space_pa(group, bus, dev, fun, off);
   return *(u16_t *)padd;
 }
 
-base_private u32_t cfg_space_read_dword(
+base_private u32_t _cfg_space_read_dword(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   kernel_assert(off % 4 == 0);
   kernel_assert(off <= (_CONFIG_SPACE_SIZE - 4));
-  uptr_t padd = cfg_space_pa(group, bus, dev, fun, off);
+  uptr_t padd = _cfg_space_pa(group, bus, dev, fun, off);
   return *(u32_t *)padd;
 }
 
-base_private void cfg_space_write_dword(
+base_private void _cfg_space_write_dword(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off, u32_t val)
 {
   kernel_assert(off % 4 == 0);
   kernel_assert(off <= (4096 - 4));
-  uptr_t padd = cfg_space_pa(group, bus, dev, fun, off);
+  uptr_t padd = _cfg_space_pa(group, bus, dev, fun, off);
   *(u32_t *)padd = val;
 }
 
@@ -135,6 +138,26 @@ base_private u16_t cfg_space_write_word(
 
 
 */
+
+byte_t d_pcie_cfg_space_read_byte(d_pcie_func_t *fun, u64_t off)
+{
+  return _cfg_space_read_byte(fun->group, fun->bus, fun->dev, fun->fun, off);
+}
+
+u16_t d_pcie_cfg_space_read_word(d_pcie_func_t *fun, u64_t off)
+{
+  return _cfg_space_read_word(fun->group, fun->bus, fun->dev, fun->fun, off);
+}
+
+u32_t d_pcie_cfg_space_read_dword(d_pcie_func_t *fun, u64_t off)
+{
+  return _cfg_space_read_dword(fun->group, fun->bus, fun->dev, fun->fun, off);
+}
+
+void d_pcie_cfg_space_write_dword(d_pcie_func_t *fun, u64_t off, u32_t val)
+{
+  _cfg_space_write_dword(fun->group, fun->bus, fun->dev, fun->fun, off, val);
+}
 
 static const char *device_name_8086(u16_t vendor, u16_t device)
 {
@@ -449,7 +472,7 @@ const char *d_pcie_func_get_device_name(d_pcie_func_t *fun)
 static void bootstrap_fun(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun)
 {
-  u16_t vendor = cfg_space_read_word(group, bus, dev, fun, 0);
+  u16_t vendor = _cfg_space_read_word(group, bus, dev, fun, 0);
 
   /* vender == 0xFFFF means device not present. */
   if (vendor != 0xFFFF) {
@@ -460,12 +483,15 @@ static void bootstrap_fun(
 
     f = &_functions[_func_cnt++];
     f->group = group;
+    f->bus = bus;
+    f->dev = dev;
+    f->fun = fun;
     f->vendor_id = vendor;
-    f->device_id = cfg_space_read_word(group, bus, dev, fun, 2);
-    f->header_type = cfg_space_read_byte(group, bus, dev, fun, 0x0E);
-    f->base_class = cfg_space_read_byte(group, bus, dev, fun, 11);
-    f->sub_class = cfg_space_read_byte(group, bus, dev, fun, 10);
-    f->pi = cfg_space_read_byte(group, bus, dev, fun, 9);
+    f->device_id = _cfg_space_read_word(group, bus, dev, fun, 2);
+    f->header_type = _cfg_space_read_byte(group, bus, dev, fun, 0x0E);
+    f->base_class = _cfg_space_read_byte(group, bus, dev, fun, 11);
+    f->sub_class = _cfg_space_read_byte(group, bus, dev, fun, 10);
+    f->pi = _cfg_space_read_byte(group, bus, dev, fun, 9);
 
     iden_name(f->vendor_id, f->device_id, &vname, &dname);
     cname = class_name(f->base_class, f->sub_class, f->pi);
@@ -477,18 +503,17 @@ static void bootstrap_fun(
 
     kernel_assert(cname != NULL);
 
-    (void)(cfg_space_read_dword);
-    (void)(cfg_space_write_dword);
+    (void)(_cfg_space_read_dword);
   }
 }
 
 static void bootstrap_dev(d_pcie_group_t *group, u64_t bus, u64_t dev)
 {
-  u16_t vendor = cfg_space_read_word(group, bus, dev, 0, 0);
+  u16_t vendor = _cfg_space_read_word(group, bus, dev, 0, 0);
 
   /* vender == 0xFFFF means device not present. */
   if (vendor != 0xFFFF) {
-    byte_t header_type = cfg_space_read_byte(group, bus, dev, 0, 0x0E);
+    byte_t header_type = _cfg_space_read_byte(group, bus, dev, 0, 0x0E);
     u64_t fun_cnt;
     if (byte_bit_get(header_type, 7)) {
       fun_cnt = 8;
