@@ -7,27 +7,42 @@
 #define PAGE_SIZE_VALUE_4K 4096
 
 /* Virtual address layout of kernel
- * --------
- * [*] Low memory < kernel_start: never used by os
- * [*] kernel_start .. kernel_end is a direct mapping
- * [*] VADD_48_HIGH_START .. VADD_48_HIGH_START + 256 pages, the stack
- * [*] VADD_48_HIGH_START + 257 pages: the temporary direct access page
- * [*] ... frame buffer ...
- * [*] VADD_48_HIGH_START + 4K pages...: the heap
+ +---------------------------+-----------------------+---------+
+ |CONSTANT                   | FIXED OFFSET          |FIXED LEN|
+ +---------------------------+-----------------------+---------+
+ |VA_48_LOW_START            |0                      |         |
+ +---------------------------+-----------------------+---------+
+ |VA_48_LOW_END              |0x00007FFFFFFFFFFF     |         |
+ +---------------------------+-----------------------+---------+
+ |VA_48_HIGH_START           |0xFFFF800000000000     |1 page   |
+ |(VA_48_STACK_BP_TOP_GUARD) |                       |         |
+ +---------------------------+-----------------------+---------+
+ |VA_48_STACK_BP_TOP         |                       |253 pages|
+ +---------------------------+-----------------------+---------+
+ |VA_48_STACK_BP_BOTTOM      |                       |         |
+ +---------------------------+-----------------------+---------+
+ |VA_48_STACK_BP_BOTTOM_GUARD|                       |1 page   |
+ +---------------------------+-----------------------+---------+
+ |VA_48_FRAME_BUFFER         |High start + 256 pages |         |
+ +---------------------------+-----------------------+---------+
+ |VA_48_DIRECT_ACCESS_PAGE   |High start + 4096 pages|1 page   |
+ +---------------------------+-----------------------+---------+
+ |VA_48_HEAP                 |                       |         |
+ +---------------------------+-----------------------+---------+
+ |VA_48_HIGH_END             |0xFFFFFFFFFFFFFFFF     |         |
+ +---------------------------+-----------------------+---------+
  */
-#define VADD_LOW_START u64_literal(0)
-#define VADD_48_LOW_END u64_literal(0x00007fffffffffff)
-#define VADD_48_HIGH_START u64_literal(0xffff800000000000)
-#define VADD_STACK_BP_TOP_GUARD VADD_48_HIGH_START
-#define VADD_STACK_BP_TOP (VADD_48_HIGH_START + 1 * PAGE_SIZE_VALUE_4K)
-#define VADD_STACK_BP_BOTTOM (VADD_48_HIGH_START + 254 * PAGE_SIZE_VALUE_4K)
-#define VADD_STACK_BP_BOTTOM_GUARD                                             \
-  (VADD_48_HIGH_START + 255 * PAGE_SIZE_VALUE_4K)
-#define VADD_FRAME_BUFFER (VADD_48_HIGH_START + 256 * PAGE_SIZE_VALUE_4K)
-#define VADD_DIRECT_ACCESS_PAGE                                                \
-  (VADD_48_HIGH_START + 4 * 1024 * PAGE_SIZE_VALUE_4K)
-#define VADD_HEAP_START (VADD_DIRECT_ACCESS_PAGE + 1 * PAGE_SIZE_VALUE_4K)
-#define VADD_HIGH_END u64_literal(0xffffffffffffffff)
+#define VA_48_LOW_START u64_literal(0)
+#define VA_48_LOW_END u64_literal(0x00007FFFFFFFFFFF)
+#define VA_48_HIGH_START u64_literal(0xFFFF800000000000)
+#define VA_48_STACK_TOP_GUARD VA_48_HIGH_START
+#define VA_48_STACK_TOP (VA_48_HIGH_START + PAGE_SIZE_VALUE_4K)
+#define VA_48_STACK_BOTTOM (VA_48_STACK_TOP + 253 * PAGE_SIZE_VALUE_4K)
+#define VA_48_STACK_BOTTOM_GUARD (VA_48_STACK_BOTTOM + PAGE_SIZE_VALUE_4K)
+#define VA_48_FRAME_BUFFER (VA_48_HIGH_START + 256 * PAGE_SIZE_VALUE_4K)
+#define VA_48_DIRECT_ACCESS_PAGE (VA_48_HIGH_START + 4096 * PAGE_SIZE_VALUE_4K)
+#define VA_48_HEAP (VA_48_DIRECT_ACCESS_PAGE + PAGE_SIZE_VALUE_4K)
+#define VA_48_HIGH_END u64_literal(0xFFFFFFFFFFFFFFFF)
 
 bo_t vadd_get_padd(vptr_t va, uptr_t *out_pa);
 bo_t padd_range_valid(uptr_t start, uptr_t end);

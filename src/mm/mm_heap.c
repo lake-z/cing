@@ -89,11 +89,11 @@ base_private block_t *_block_find_buddy(block_t *blk)
 
   /* blk_base is the address of the original block allocated from paging system,
      from which we do binary buddy splitting/coalescing */
-  blk_base = (uptr_t)blk - VADD_HEAP_START;
+  blk_base = (uptr_t)blk - VA_48_HEAP;
   blk_base = mm_align_down(blk_base, _size_of_class(_BLOCK_MAX_CLASS - 1));
 
   /* Block offset relative to base */
-  blk_offs = (uptr_t)blk - VADD_HEAP_START - blk_base;
+  blk_offs = (uptr_t)blk - VA_48_HEAP - blk_base;
   kernel_assert_d(mm_align_check(blk_offs, blk_size));
 
   /* Binary buddy invariant: block offset to base should alwyas align with
@@ -104,7 +104,7 @@ base_private block_t *_block_find_buddy(block_t *blk)
     kernel_assert_d(mm_align_check(blk_offs, blk_size * 2));
     buddy_addr = blk_offs + blk_size;
   }
-  buddy_block = (block_t *)(buddy_addr + blk_base + VADD_HEAP_START);
+  buddy_block = (block_t *)(buddy_addr + blk_base + VA_48_HEAP);
 
   /* Buddy meta must always be eixsted as we have already splitted. */
   _block_validate(buddy_block);
@@ -344,7 +344,7 @@ void mm_heap_bootstrap(void)
   for (usz_t i = 0; i < _BLOCK_MAX_CLASS; i++) {
     _free_list[i] = NULL;
   }
-  _heap_end = VADD_HEAP_START;
+  _heap_end = VA_48_HEAP;
 }
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
@@ -354,13 +354,13 @@ base_private void _heap_validate(void)
   block_t *blk;
   usz_t size;
 
-  blk = (block_t *)VADD_HEAP_START;
+  blk = (block_t *)VA_48_HEAP;
   while (((uptr_t)blk) < _heap_end) {
     kernel_assert(mm_align_check((uptr_t)blk, PAGE_SIZE_VALUE_4K));
     _block_validate(blk);
 
     size = _size_of_class(blk->class);
-    kernel_assert(mm_align_check((uptr_t)blk - VADD_HEAP_START, size));
+    kernel_assert(mm_align_check((uptr_t)blk - VA_48_HEAP, size));
     blk = blk + size;
   }
 }

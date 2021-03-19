@@ -123,7 +123,7 @@ base_private void _tab_entry_init(tab_entry_t *e,
   }
 
   kernel_assert(mm_align_check(padd, padd_size));
-  kernel_assert(padd <= VADD_48_LOW_END || padd >= VADD_48_HIGH_START);
+  kernel_assert(padd <= VA_48_LOW_END || padd >= VA_48_HIGH_START);
 
   (*(u64_t *)e) = padd;
   if (present) {
@@ -454,12 +454,12 @@ bo_t vadd_get_padd(vptr_t va, uptr_t *out_pa)
 
 uptr_t mm_vadd_stack_bp_bottom_get(void)
 {
-  return VADD_STACK_BP_BOTTOM;
+  return VA_48_STACK_BOTTOM;
 }
 
 uptr_t mm_vadd_stack_bp_top_get(void)
 {
-  return VADD_STACK_BP_TOP;
+  return VA_48_STACK_TOP;
 }
 
 base_private void _init_direct_access(void)
@@ -468,7 +468,7 @@ base_private void _init_direct_access(void)
   tab_entry_index_t en_idx;
   tab_entry_t *en;
 
-  _direct_vadd = (vptr_t)(VADD_DIRECT_ACCESS_PAGE);
+  _direct_vadd = (vptr_t)(VA_48_DIRECT_ACCESS_PAGE);
   kernel_assert(mm_align_check((uptr_t)_direct_tab, PAGE_SIZE_4K));
 
   for (usz_t i = 0; i < 3; i++) {
@@ -565,7 +565,7 @@ base_private void _init_stack_memory(
   u64_t stack_position;
   usz_t stack_len;
 
-  for (uptr_t page = VADD_STACK_BP_TOP; page <= VADD_STACK_BP_BOTTOM;
+  for (uptr_t page = VA_48_STACK_TOP; page <= VA_48_STACK_BOTTOM;
        page += PAGE_SIZE_4K) {
     uptr_t frame_pa;
     bo_t ok = mm_frame_alloc(&frame_pa);
@@ -582,8 +582,8 @@ base_private void _init_stack_memory(
 
   stack_len = boot_stack_bottom - (uptr_t)&stack_position;
   kernel_assert(stack_len < PAGE_SIZE_4K);
-  mm_copy((byte_t *)(VADD_STACK_BP_BOTTOM - stack_len),
-      (byte_t *)&stack_position, stack_len);
+  mm_copy((byte_t *)(VA_48_STACK_BOTTOM - stack_len), (byte_t *)&stack_position,
+      stack_len);
 }
 
 /* Initialize frame buffer memory for VESA driver.
@@ -597,7 +597,7 @@ base_private void _bootstrap_vesa_frame_buffer(uptr_t fb, usz_t fb_len)
 
   kernel_assert(fb % PAGE_SIZE_4K == 0);
 
-  va = VADD_FRAME_BUFFER;
+  va = VA_48_FRAME_BUFFER;
   pa = fb;
   while (map_size < fb_len) {
     bo_t ok = mm_page_map(va + map_size, pa + map_size);
@@ -605,7 +605,7 @@ base_private void _bootstrap_vesa_frame_buffer(uptr_t fb, usz_t fb_len)
     map_size += PAGE_SIZE_4K;
   }
 
-  d_vesa_set_frame_buffer((byte_t *)VADD_FRAME_BUFFER);
+  d_vesa_set_frame_buffer((byte_t *)VA_48_FRAME_BUFFER);
 }
 
 void mm_page_init(uptr_t kernel_start,
