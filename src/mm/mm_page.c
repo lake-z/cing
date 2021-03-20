@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "drivers_pcie.h"
 #include "drivers_vesa.h"
 #include "kernel_panic.h"
 #include "log.h"
@@ -533,12 +534,12 @@ base_private bo_t _direct_access_is_reset(void)
   return present == false;
 }
 
-void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
+void mm_page_early_bootstrap(uptr_t kernel_start, uptr_t kernel_end)
 {
   uptr_t va;
   bo_t ok;
-  uptr_t phy_start = padd_start();
-  uptr_t phy_end = padd_end();
+  uptr_t phy_start = mm_pa_start();
+  uptr_t phy_end = mm_pa_end();
 
   kernel_assert(sizeof(tab_entry_t) == _TAB_ENTRY_LEN);
   kernel_assert(phy_start < kernel_start);
@@ -547,6 +548,9 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
 
   _tab_zero(_tab_4);
 
+  /* FIXME: We should map a larger physical address space in case we need
+   * to access physical address that is not a real memory, such as frame buffer,
+   * PCIe config space.. */
   for (va = 0; (va + PAGE_SIZE_2M) < phy_end; va += PAGE_SIZE_2M) {
     ok = _map_early(va, va);
     if (!ok)
@@ -559,7 +563,7 @@ void mm_page_early_init(uptr_t kernel_start, uptr_t kernel_end)
 }
 
 /* Initialize memory for new stack which is located in higher half memory. */
-base_private void _init_stack_memory(
+base_private void _bootstrap_stack_memory(
     uptr_t boot_stack_top, uptr_t boot_stack_bottom)
 {
   u64_t stack_position;
@@ -608,13 +612,44 @@ base_private void _bootstrap_vesa_frame_buffer(uptr_t fb, usz_t fb_len)
   d_vesa_set_frame_buffer((byte_t *)VA_48_FRAME_BUFFER);
 }
 
-void mm_page_init(uptr_t kernel_start,
+base_private void _bootstrap_pcie_cfg_space(void)
+{
+  uptr_t va = VA_48_PCIE_CFG_START;
+  ucnt_t cnt = d_pcie_group_get_cnt();
+  for (ucnt_t i = 0; i < cnt; i++) {
+    uptr_t cfg_start = d_pcie_group_get_cfg_pa(i);
+    uptr_t cfg_end = cfg_start + d_pcie_group_get_cfg_len();
+    for (uptr_t pa = cfg_start; pa < cfg_end;) {
+      kernel_assert(va < VA_48_PCIE_CFG_END);
+      bo_t ok = mm_page_map(va, pa);
+      kernel_assert(ok == true);
+      va += PAGE_SIZE_4K;
+      pa += PAGE_SIZE_4K;
+    }
+  }
+}
+
+base_private bo_t _bootstrap_pa_inside_pcie_cfg_space(uptr_t page)
+{
+  ucnt_t cnt = d_pcie_group_get_cnt();
+  bo_t ret = false;
+  for (ucnt_t i = 0; i < cnt; i++) {
+    uptr_t cfg_start = d_pcie_group_get_cfg_pa(i);
+    if (page >= cfg_start && page < (cfg_start + d_pcie_group_get_cfg_len())) {
+      ret = true;
+      break;
+    }
+  }
+  return ret;
+}
+
+void mm_page_bootstrap(uptr_t kernel_start,
     uptr_t kernel_end,
     uptr_t boot_stack_bottom,
     uptr_t boot_stack_top)
 {
   uptr_t unmap;
-  uptr_t phy_end = padd_end();
+  uptr_t phy_end = mm_pa_end();
   uptr_t fb;
   usz_t fb_len;
 
@@ -634,20 +669,22 @@ void mm_page_init(uptr_t kernel_start,
   unmap = mm_align_up(kernel_end + 1, PAGE_SIZE_2M);
   for (; (unmap + PAGE_SIZE_2M) < phy_end; unmap += PAGE_SIZE_2M) {
     bo_t free_frame;
-    /* Only unmap memory outside range of frame buffer */
-    if ((unmap > (fb + fb_len)) || ((fb + PAGE_SIZE_2M) < fb)) {
+    if (mm_pa_range_valid(unmap, unmap + PAGE_SIZE_2M) &&
+        ((unmap > (fb + fb_len)) || ((fb + PAGE_SIZE_2M) < fb))) {
+      kernel_assert(!_bootstrap_pa_inside_pcie_cfg_space(unmap));
       free_frame = true;
     } else {
       free_frame = false;
     }
-
     _unmap(unmap, PAGE_SIZE_2M, free_frame);
   }
 
   kernel_assert(unmap == _early_map_end);
 
   _bootstrap_vesa_frame_buffer(fb, fb_len);
-  _init_stack_memory(boot_stack_top, boot_stack_bottom);
+  _bootstrap_pcie_cfg_space();
+  /* Stack memory is initialzed at last to minimum stack chaos risk. */
+  _bootstrap_stack_memory(boot_stack_top, boot_stack_bottom);
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED
   _test_paging();

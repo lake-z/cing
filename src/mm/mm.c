@@ -94,7 +94,7 @@ bo_t mm_align_check(uptr_t p, u64_t align)
   return ((uptr_t)p) % align == 0;
 }
 
-base_private void _init_kernel_elf_symbols(
+base_private void _bootstrap_kernel_elf_symbols(
     const byte_t *kernel_elf_info, usz_t elf_info_len base_may_unuse)
 {
   multiboot_tag_elf_sections_t *secs;
@@ -128,7 +128,7 @@ base_private void _init_kernel_elf_symbols(
   /* Verify this function must be with in kernel image */
   kernel_assert((uptr_t)mm_early_bootstrap < _kernel_end);
   kernel_assert((uptr_t)mm_early_bootstrap > _kernel_start);
-  kernel_assert(padd_range_valid(_kernel_start, _kernel_end));
+  kernel_assert(mm_pa_range_valid(_kernel_start, _kernel_end));
 
   log_line_format(LOG_LEVEL_INFO, "kernel start: %lu, end: %lu", _kernel_start,
       _kernel_end);
@@ -139,15 +139,16 @@ void mm_early_bootstrap(const byte_t *kernel_elf_info,
     const byte_t *mmap_info,
     usz_t mmap_info_len)
 {
-  mm_frame_early_init(mmap_info, mmap_info_len);
-  _init_kernel_elf_symbols(kernel_elf_info, elf_info_len);
-  mm_page_early_init(_kernel_start, _kernel_end);
+  mm_frame_early_bootstrap(mmap_info, mmap_info_len);
+  _bootstrap_kernel_elf_symbols(kernel_elf_info, elf_info_len);
+  mm_page_early_bootstrap(_kernel_start, _kernel_end);
 }
 
 void mm_bootstrap(uptr_t boot_stack_bottom, uptr_t boot_stack_top)
 {
-  mm_frame_init();
-  mm_page_init(_kernel_start, _kernel_end, boot_stack_bottom, boot_stack_top);
+  mm_frame_bootstrap();
+  mm_page_bootstrap(
+      _kernel_start, _kernel_end, boot_stack_bottom, boot_stack_top);
   mm_heap_bootstrap();
   mm_allocator_bootstrap();
 

@@ -31,6 +31,7 @@ base_private usz_t _phy_mem_size;
 /* Frames can be used during early stage of mm bootstrap. */
 #define _EARLY_FRAME_CAP 16 * 1024
 byte_t _early_frame_pool[_EARLY_FRAME_CAP * FRAME_SIZE_4K] base_align(4096);
+/* Frames used in early stage. */
 base_private usz_t _early_frame_count;
 base_private bo_t _is_early_stage;
 
@@ -41,7 +42,7 @@ base_private ucnt_t _free_count;
 
 /* Initialize avaliable physical memory sections according to Multiboot memory 
  * map. */
-base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
+base_private void _bootstrap_mmap_info(const byte_t *ptr, usz_t size)
 {
   u32_t entry_size;
   u32_t entry_ver;
@@ -94,14 +95,14 @@ base_private void _init_mmap_info(const byte_t *ptr, usz_t size)
   log_line_format(LOG_LEVEL_INFO, "Physical memory size: %lu", _phy_mem_size);
 }
 
-void mm_frame_early_init(const byte_t *mmap_info, usz_t mmap_info_len)
+void mm_frame_early_bootstrap(const byte_t *mmap_info, usz_t mmap_info_len)
 {
   _early_frame_count = 0;
-  _init_mmap_info(mmap_info, mmap_info_len);
+  _bootstrap_mmap_info(mmap_info, mmap_info_len);
   _is_early_stage = true;
 }
 
-void mm_frame_init(void)
+void mm_frame_bootstrap(void)
 {
   kernel_assert(_is_early_stage);
 
@@ -166,13 +167,13 @@ ucnt_t mm_frame_free_count(void)
   return _free_count;
 }
 
-uptr_t padd_start(void)
+uptr_t mm_pa_start(void)
 {
   kernel_assert(_phy_mem_sec_count > 0);
   return _phy_mem_secs[0].base;
 }
 
-uptr_t padd_end(void)
+uptr_t mm_pa_end(void)
 {
   kernel_assert(_phy_mem_sec_count > 0);
   uptr_t mem = _phy_mem_secs[_phy_mem_sec_count - 1].base;
@@ -180,7 +181,7 @@ uptr_t padd_end(void)
   return mem;
 }
 
-bo_t padd_range_valid(uptr_t start, uptr_t end)
+bo_t mm_pa_range_valid(uptr_t start, uptr_t end)
 {
   bo_t found = false;
   for (usz_t i = 0; i < _phy_mem_sec_count; i++) {

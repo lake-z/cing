@@ -36,7 +36,7 @@ base_private uptr_t _CONFIG_SPACE_SIZE = 4096;
 base_private uptr_t _CONFIG_SPACE_ALIGN = 256 * 32 * 8 * 4 * 1024;
 
 struct d_pcie_group {
-  uptr_t cfg_space_base_padd;
+  uptr_t cfg_space_base_pa;
   u16_t group_no;
   u8_t bus_start;
   u8_t bus_end;
@@ -67,14 +67,13 @@ base_private uptr_t _cfg_space_pa(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun, u64_t off)
 {
   uptr_t pa;
-  kernel_assert(
-      mm_align_check(group->cfg_space_base_padd, _CONFIG_SPACE_ALIGN));
+  kernel_assert(mm_align_check(group->cfg_space_base_pa, _CONFIG_SPACE_ALIGN));
   kernel_assert(bus < _BUS_MAX);
   kernel_assert(dev < _DEVICE_MAX);
   kernel_assert(fun < _FUNCTION_MAX);
   kernel_assert(off < 4096);
 
-  pa = group->cfg_space_base_padd | bus << 20 | dev << 15 | fun << 12;
+  pa = group->cfg_space_base_pa | bus << 20 | dev << 15 | fun << 12;
   pa |= off;
   return pa;
 }
@@ -469,6 +468,22 @@ const char *d_pcie_func_get_device_name(d_pcie_func_t *fun)
   return dname;
 }
 
+ucnt_t d_pcie_group_get_cnt(void)
+{
+  return _gropp_cnt;
+}
+
+uptr_t d_pcie_group_get_cfg_pa(ucnt_t group_idx)
+{
+  kernel_assert(group_idx < _gropp_cnt);
+  return _groups[group_idx].cfg_space_base_pa;
+}
+
+usz_t d_pcie_group_get_cfg_len(void)
+{
+  return _CONFIG_SPACE_ALIGN;
+}
+
 static void bootstrap_fun(
     d_pcie_group_t *group, u64_t bus, u64_t dev, u64_t fun)
 {
@@ -544,7 +559,7 @@ void d_pcie_bootstrap(const byte_t *mcfg, usz_t len)
     _groups[i] = *(d_pcie_group_t *)(mcfg + i * sizeof(d_pcie_group_t));
 
     kernel_assert(
-        mm_align_check(_groups[i].cfg_space_base_padd, _CONFIG_SPACE_ALIGN));
+        mm_align_check(_groups[i].cfg_space_base_pa, _CONFIG_SPACE_ALIGN));
 
     for (u64_t bus = _groups[i].bus_start; bus < _groups[i].bus_end; bus++) {
       for (u64_t dev = 0; dev < 32; dev++) {

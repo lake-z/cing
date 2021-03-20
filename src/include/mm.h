@@ -27,6 +27,8 @@ mm_allocator_t *mm_allocator_new(void);
 vptr_t mm_allocate(mm_allocator_t *all, usz_t size, usz_t align);
 void mm_allocator_free(mm_allocator_t *all);
 
+bo_t mm_page_map(uptr_t va, uptr_t pa);
+
 #ifdef BUILD_BUILTIN_TEST_ENABLED
 /* Built-in tests declarations */
 void test_mm(void);
