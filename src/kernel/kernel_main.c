@@ -154,13 +154,7 @@ base_private void _test_stack_overflow(void)
 {
   byte_t stack_data[1000];
 
-  /*
-  log_line_start(LOG_LEVEL_DEBUG);
-  log_str(LOG_LEVEL_DEBUG, "stack at: ");
-  log_uint_of_size(LOG_LEVEL_DEBUG, (uptr_t)stack_data);
-  log_line_end(LOG_LEVEL_DEBUG);
-  */
-  if (((uptr_t)stack_data - 2048) > mm_vadd_stack_bp_top_get()) {
+  if (((uptr_t)stack_data - 2048) > mm_va_stack_top()) {
     _test_stack_overflow();
   }
 }
@@ -228,13 +222,13 @@ void kernal_main(uptr_t multi_boot_info)
   rbp_off = (curr_stack_bottom - rbp);
   rsp_off = (curr_stack_bottom - rsp);
 
-  new_rbp = mm_vadd_stack_bp_bottom_get() - rbp_off;
-  new_rsp = mm_vadd_stack_bp_bottom_get() - rsp_off;
+  new_rbp = mm_va_stack_bottom() - rbp_off;
+  new_rsp = mm_va_stack_bottom() - rsp_off;
 
   curr_stack_len = curr_stack_bottom - curr_stack_top;
 
   /* Copy everything from old stack to new stack */
-  mm_copy((byte_t *)(mm_vadd_stack_bp_bottom_get() - curr_stack_len),
+  mm_copy((byte_t *)(mm_va_stack_bottom() - curr_stack_len),
       (byte_t *)curr_stack_top, curr_stack_len);
 
   /* Set register RSP and RBP to new value, after here we switch to work on

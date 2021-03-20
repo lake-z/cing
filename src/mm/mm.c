@@ -94,6 +94,18 @@ bo_t mm_align_check(uptr_t p, u64_t align)
   return ((uptr_t)p) % align == 0;
 }
 
+usz_t mm_align_class(uptr_t p)
+{
+  usz_t align = 1;
+  while ((p % align) == 0) {
+    align *= 2;
+  }
+  align /= 2;
+  kernel_assert((p % align) == 0);
+  kernel_assert(align > 1);
+  return align;
+}
+
 base_private void _bootstrap_kernel_elf_symbols(
     const byte_t *kernel_elf_info, usz_t elf_info_len base_may_unuse)
 {
@@ -155,6 +167,26 @@ void mm_bootstrap(uptr_t boot_stack_bottom, uptr_t boot_stack_top)
   log_line_format(LOG_LEVEL_INFO,
       "mm initialize finished, %lu free frames available.",
       mm_frame_free_count());
+}
+
+uptr_t mm_va_pcie_cfg_space(void)
+{
+  return VA_48_PCIE_CFG_START;
+}
+
+uptr_t mm_va_pcie_cfg_space_bound(void)
+{
+  return VA_48_PCIE_CFG_END;
+}
+
+uptr_t mm_va_stack_bottom(void)
+{
+  return VA_48_STACK_BOTTOM;
+}
+
+uptr_t mm_va_stack_top(void)
+{
+  return VA_48_STACK_TOP;
 }
 
 #ifdef BUILD_BUILTIN_TEST_ENABLED

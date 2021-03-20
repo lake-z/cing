@@ -453,16 +453,6 @@ bo_t vadd_get_padd(vptr_t va, uptr_t *out_pa)
   return present;
 }
 
-uptr_t mm_vadd_stack_bp_bottom_get(void)
-{
-  return VA_48_STACK_BOTTOM;
-}
-
-uptr_t mm_vadd_stack_bp_top_get(void)
-{
-  return VA_48_STACK_TOP;
-}
-
 base_private void _init_direct_access(void)
 {
   tab_entry_t *tab;
@@ -668,15 +658,17 @@ void mm_page_bootstrap(uptr_t kernel_start,
 
   unmap = mm_align_up(kernel_end + 1, PAGE_SIZE_2M);
   for (; (unmap + PAGE_SIZE_2M) < phy_end; unmap += PAGE_SIZE_2M) {
-    bo_t free_frame;
-    if (mm_pa_range_valid(unmap, unmap + PAGE_SIZE_2M) &&
-        ((unmap > (fb + fb_len)) || ((fb + PAGE_SIZE_2M) < fb))) {
-      kernel_assert(!_bootstrap_pa_inside_pcie_cfg_space(unmap));
-      free_frame = true;
-    } else {
-      free_frame = false;
+    if (!_bootstrap_pa_inside_pcie_cfg_space(unmap)) {
+      bo_t free_frame;
+      if (mm_pa_range_valid(unmap, unmap + PAGE_SIZE_2M) &&
+          ((unmap > (fb + fb_len)) || ((fb + PAGE_SIZE_2M) < fb))) {
+        free_frame = true;
+      } else {
+        free_frame = false;
+      }
+
+      _unmap(unmap, PAGE_SIZE_2M, free_frame);
     }
-    _unmap(unmap, PAGE_SIZE_2M, free_frame);
   }
 
   kernel_assert(unmap == _early_map_end);

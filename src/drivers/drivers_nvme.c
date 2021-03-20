@@ -9,11 +9,15 @@
 base_private const u8_t _CLASS_CODE_BASE = 0x01;
 base_private const u8_t _CLASS_CODE_SUB = 0x08;
 base_private const u64_t _CFG_SPACE_BAR_0 = 0x10;
+/* Masks bit 14 ~ 31 */
+base_private const u32_t _CFG_SPACE_BAR_0_BASE_MASK = 0xFFFFC000;
 
 typedef struct d_nvme_ctrl d_nvme_ctrl_t;
 struct d_nvme_ctrl {
   mm_allocator_t *mm;
   d_pcie_func_t *pcie;
+  usz_t reg_size;
+  byte_t *regs;
 };
 
 #define _CTRL_CAP 32
@@ -35,6 +39,10 @@ base_private void _ctrl_add(d_pcie_func_t *pcie_fun)
   by = bar0 & 0xFF;
   /* Only supports non-prefectchable, and 64-bit address space */
   kernel_assert(by == 4);
+
+  bar0 = bar0 & _CFG_SPACE_BAR_0_BASE_MASK;
+  ctrl->reg_size = mm_align_class((u64_t)bar0);
+  log_line_format(LOG_LEVEL_INFO, "bar0 size: %lu", ctrl->reg_size);
 }
 
 void d_nvme_bootstrap(void)
