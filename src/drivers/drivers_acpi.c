@@ -80,7 +80,7 @@ base_private void checksum_validate_old(rsdp_descriptor_1_t *v1)
 }
 */
 
-void acpi_init_new(const byte_t *multi_boot_info, usz_t len)
+void acpi_bootstrap_64(const byte_t *multi_boot_info, usz_t len)
 {
   const rsdp_descriptor_2_t *rsdp =
       (const rsdp_descriptor_2_t *)multi_boot_info;
@@ -128,7 +128,7 @@ base_private void _init_rsdt(byte_t *rsdt)
   }
 }
 
-void acpi_init_old(const byte_t *multi_boot_info, usz_t len)
+void acpi_bootstrap_32(const byte_t *multi_boot_info, usz_t len)
 {
   uptr_t ptr = (uptr_t)multi_boot_info;
   const ch_t *signature;
