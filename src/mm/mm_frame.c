@@ -1,3 +1,5 @@
+/* Physical memory management. */
+
 #include "kernel_panic.h"
 #include "log.h"
 #include "mm_private.h"

@@ -167,7 +167,7 @@ void mm_allocator_free(mm_allocator_t *all)
   _free_alls = all;
 }
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 /* Built-in tests */
 
 #define _TEST_MAX_UNITS 32

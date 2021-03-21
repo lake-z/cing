@@ -4,7 +4,7 @@
 #include "base.h"
 
 typedef enum {
-  LOG_LEVEL_BUILTIN_TEST = 0,
+  LOG_LEVEL_SELF_TEST = 0,
   LOG_LEVEL_DEBUG = 1,
   LOG_LEVEL_INFO = 2,
   LOG_LEVEL_WARN = 3,

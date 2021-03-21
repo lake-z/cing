@@ -171,7 +171,6 @@ void kernal_main(uptr_t multi_boot_info)
   uptr_t curr_stack_bottom;
   usz_t curr_stack_len;
 
-  screen_init();
   serial_init();
 
   log_line_format(LOG_LEVEL_INFO, "inSilicon started..");
@@ -237,7 +236,7 @@ void kernal_main(uptr_t multi_boot_info)
   __asm__("movq %0, %%rsp" : /* no output */ : "r"(new_rsp));
   _test_stack_overflow();
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
   test_mm();
 #endif
 

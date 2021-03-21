@@ -34,7 +34,7 @@ void mm_allocator_free(mm_allocator_t *all);
 
 bo_t mm_page_map(uptr_t va, uptr_t pa);
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 /* Built-in tests declarations */
 void test_mm(void);
 #endif

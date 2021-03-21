@@ -104,7 +104,7 @@ void mm_heap_free(vptr_t block_user);
 
 void mm_allocator_bootstrap(void);
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 /* Built-in tests declarations */
 void test_heap(void);
 void test_allocator(void);

@@ -61,7 +61,7 @@ base_private tab_entry_index_t _vadd_tab_index(uptr_t va, tab_level_t level);
 base_private bo_t _direct_access_is_reset(void);
 base_private usz_t _vadd_page_offset(uptr_t va, tab_level_t lv);
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 /* Built-in tests declarations */
 base_private byte_t _test_direct_access_bytes[PAGE_SIZE_4K] base_align(
     PAGE_SIZE_VALUE_4K);
@@ -647,7 +647,7 @@ void mm_page_bootstrap(uptr_t kernel_start,
 
   _init_direct_access();
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
   _test_direct_access();
 #endif
 
@@ -678,12 +678,12 @@ void mm_page_bootstrap(uptr_t kernel_start,
   /* Stack memory is initialzed at last to minimum stack chaos risk. */
   _bootstrap_stack_memory(boot_stack_top, boot_stack_bottom);
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
   _test_paging();
 #endif
 }
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 /* Built-in tests*/
 
 base_private void _test_direct_access(void)

@@ -23,7 +23,7 @@ typedef struct block {
 base_private block_t *_free_list[_BLOCK_MAX_CLASS];
 base_private uptr_t _heap_end;
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 
 /* Built-in tests declarations */
 base_private void _test_helper_verify_all_list_class(void);
@@ -347,7 +347,7 @@ void mm_heap_bootstrap(void)
   _heap_end = VA_48_HEAP;
 }
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 
 base_private void _heap_validate(void)
 {

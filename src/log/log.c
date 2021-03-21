@@ -4,7 +4,7 @@
 #include "kernel_panic.h"
 #include "video.h"
 
-base_private const ch_t *_LINE_PREFIX_LEVEL[LOG_LEVEL_FATAL + 1] = { "[BTE]",
+base_private const ch_t *_LINE_PREFIX_LEVEL[LOG_LEVEL_FATAL + 1] = { "[STE]",
   "[DBG]", "[INF]", "[WRN]", "[ERR]", "[FAT]" };
 base_private const usz_t _LINE_PREFIX_LEVEL_LEN = 6;
 
@@ -140,10 +140,10 @@ base_private void _log_line_end(log_level_t lv)
 
 void _log_builtin_test_pass(const ch_t *test_name, const ch_t *file, usz_t line)
 {
-  _log_line_start(LOG_LEVEL_BUILTIN_TEST, file, line);
-  log_str(LOG_LEVEL_BUILTIN_TEST, test_name);
-  log_str(LOG_LEVEL_BUILTIN_TEST, " .. Passed.");
-  _log_line_end(LOG_LEVEL_BUILTIN_TEST);
+  _log_line_start(LOG_LEVEL_SELF_TEST, file, line);
+  log_str(LOG_LEVEL_SELF_TEST, test_name);
+  log_str(LOG_LEVEL_SELF_TEST, " .. Passed.");
+  _log_line_end(LOG_LEVEL_SELF_TEST);
 }
 
 void _log_line_format_v(

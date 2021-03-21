@@ -1,3 +1,5 @@
+/* Memory management subsystem. */
+
 #include "containers_string.h"
 #include "kernel_panic.h"
 #include "log.h"
@@ -189,7 +191,7 @@ uptr_t mm_va_stack_top(void)
   return VA_48_STACK_TOP;
 }
 
-#ifdef BUILD_BUILTIN_TEST_ENABLED
+#ifdef BUILD_SELF_TEST_ENABLED
 void test_mm()
 {
   test_heap();
