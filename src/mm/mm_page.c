@@ -94,6 +94,8 @@ base_private bo_t _tab_entry_is_huge(tab_entry_t *entry)
   return entry->huge;
 }
 
+/* Get the physical address of memory page, if this is the last level of page
+ * table, or the next level og page table. */
 base_private uptr_t _tab_entry_get_padd(tab_entry_t *ent)
 {
   uptr_t result = *(uptr_t *)ent;

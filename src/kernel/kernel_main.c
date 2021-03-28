@@ -4,14 +4,13 @@
 #include "drivers_keyboard.h"
 #include "drivers_nvme.h"
 #include "drivers_port.h"
-#include "drivers_screen.h"
 #include "drivers_serial.h"
 #include "drivers_time.h"
 #include "drivers_vesa.h"
 #include "interrupts.h"
 #include "kernel_panic.h"
 #include "log.h"
-#include "mm.h"
+#include "mem.h"
 #include "tui.h"
 #include "video.h"
 
@@ -161,19 +160,9 @@ base_private void _test_stack_overflow(void)
 
 void kernal_main(uptr_t multi_boot_info)
 {
-  uptr_t rbp;
-  uptr_t rsp;
-  u64_t rbp_off;
-  u64_t rsp_off;
-  uptr_t new_rsp;
-  uptr_t new_rbp;
-  uptr_t curr_stack_top;
-  uptr_t curr_stack_bottom;
-  usz_t curr_stack_len;
-
   serial_init();
 
-  log_line_format(LOG_LEVEL_INFO, "inSilicon started..");
+  log_line_format(LOG_LEVEL_INFO, "cold_spot started..");
   log_line_format(LOG_LEVEL_INFO, "git revision: %s", BUILD_GIT_REVISION);
 
   _multi_boot_info_save(&_boot_info, (const byte_t *)multi_boot_info);
@@ -182,69 +171,83 @@ void kernal_main(uptr_t multi_boot_info)
   kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS] != 0);
   kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP] != NULL);
   kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP] != 0);
-  mm_early_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
+  mem_bootstrap_1(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ELF_SYMBOLS],
       _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
 
-  kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != NULL);
-  kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != 0);
-  d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER],
-      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
+  //  uptr_t rbp;
+  //  uptr_t rsp;
+  //  u64_t rbp_off;
+  //  u64_t rsp_off;
+  //  uptr_t new_rsp;
+  //  uptr_t new_rbp;
+  //  uptr_t curr_stack_top;
+  //  uptr_t curr_stack_bottom;
+  //  usz_t curr_stack_len;
 
-  if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL) {
-    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
-    acpi_bootstrap_64(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW],
-        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW]);
-  } else {
-    kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
-    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
-    acpi_bootstrap_32(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD],
-        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
-  }
+  //
+  //  kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != NULL);
+  //  kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != 0);
+  //  d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER],
+  //      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
+  //
+  //  if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL) {
+  //    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
+  //    acpi_bootstrap_64(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW],
+  //        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW]);
+  //  } else {
+  //    kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
+  //    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
+  //    acpi_bootstrap_32(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD],
+  //        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
+  //  }
+  //
+  //  intr_init();
+  //
+  //  mm_bootstrap((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
+  //
+  //  log_enable_video_write();
+  //  /* Switching from boot time stack to new stack in high half.
+  //   * It is safer to do it in kernel_main as it is the entry function of C code,
+  //   * and will never get return. */
+  //  curr_stack_top = (uptr_t)&boot_stack_top;
+  //  curr_stack_bottom = (uptr_t)&boot_stack_bottom;
+  //
+  //  /* Read from register RSP and RBP */
+  //  __asm__("movq %%rbp, %0" : "=r"(rbp) :);
+  //  __asm__("movq %%rsp, %0" : "=r"(rsp) :);
+  //
+  //  rbp_off = (curr_stack_bottom - rbp);
+  //  rsp_off = (curr_stack_bottom - rsp);
+  //
+  //  new_rbp = mm_va_stack_bottom() - rbp_off;
+  //  new_rsp = mm_va_stack_bottom() - rsp_off;
+  //
+  //  curr_stack_len = curr_stack_bottom - curr_stack_top;
+  //
+  //  /* Copy everything from old stack to new stack */
+  //  mm_copy((byte_t *)(mm_va_stack_bottom() - curr_stack_len),
+  //      (byte_t *)curr_stack_top, curr_stack_len);
+  //
+  //  /* Set register RSP and RBP to new value, after here we switch to work on
+  //   * new stack. */
+  //  __asm__("movq %0, %%rbp" : /* no output */ : "r"(new_rbp));
+  //  __asm__("movq %0, %%rsp" : /* no output */ : "r"(new_rsp));
+  //  _test_stack_overflow();
+  //
+  //#ifdef BUILD_SELF_TEST_ENABLED
+  //  test_mm();
+  //#endif
+  //
+  //  d_nvme_bootstrap();
+  //
+  //  tui_start();
+  //
 
-  intr_init();
+  (void)(_test_stack_overflow);
 
-  mm_bootstrap((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
-
-  log_enable_video_write();
-  /* Switching from boot time stack to new stack in high half.
-   * It is safer to do it in kernel_main as it is the entry function of C code,
-   * and will never get return. */
-  curr_stack_top = (uptr_t)&boot_stack_top;
-  curr_stack_bottom = (uptr_t)&boot_stack_bottom;
-
-  /* Read from register RSP and RBP */
-  __asm__("movq %%rbp, %0" : "=r"(rbp) :);
-  __asm__("movq %%rsp, %0" : "=r"(rsp) :);
-
-  rbp_off = (curr_stack_bottom - rbp);
-  rsp_off = (curr_stack_bottom - rsp);
-
-  new_rbp = mm_va_stack_bottom() - rbp_off;
-  new_rsp = mm_va_stack_bottom() - rsp_off;
-
-  curr_stack_len = curr_stack_bottom - curr_stack_top;
-
-  /* Copy everything from old stack to new stack */
-  mm_copy((byte_t *)(mm_va_stack_bottom() - curr_stack_len),
-      (byte_t *)curr_stack_top, curr_stack_len);
-
-  /* Set register RSP and RBP to new value, after here we switch to work on
-   * new stack. */
-  __asm__("movq %0, %%rbp" : /* no output */ : "r"(new_rbp));
-  __asm__("movq %0, %%rsp" : /* no output */ : "r"(new_rsp));
-  _test_stack_overflow();
-
-#ifdef BUILD_SELF_TEST_ENABLED
-  test_mm();
-#endif
-
-  d_nvme_bootstrap();
-
-  tui_start();
-
-  log_line_format(LOG_LEVEL_INFO, "inSilicon ended.");
+  log_line_format(LOG_LEVEL_INFO, "cold_spot ended.");
 
   _kernel_halt();
 }

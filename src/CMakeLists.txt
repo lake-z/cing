@@ -31,6 +31,7 @@ set(SRC_MODULES
   interrupts
   kernel
   log
+  mem
   mm
   panel
   tui

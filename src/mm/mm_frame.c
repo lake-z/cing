@@ -1,4 +1,3 @@
-/* Physical memory management. */
 
 #include "kernel_panic.h"
 #include "log.h"
