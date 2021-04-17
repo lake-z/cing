@@ -20,13 +20,6 @@ void _log_line_format_v(
     log_level_t lv, const ch_t *file, usz_t line, const ch_t *format, ...)
     base_check_format(4, 5);
 
-/*
-#define log_line_start(level)                                                  \
-  do {                                                                         \
-    _log_line_start(level, __FILE__, __LINE__);                                \
-  } while (0)
-  */
-
 #define log_builtin_test_pass()                                                \
   do {                                                                         \
     _log_builtin_test_pass(__FUNCTION__, __FILE__, __LINE__);                  \

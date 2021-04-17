@@ -186,27 +186,30 @@ void kernal_main(uptr_t multi_boot_info)
   //  uptr_t curr_stack_bottom;
   //  usz_t curr_stack_len;
 
-  //
-  //  kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != NULL);
-  //  kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != 0);
-  //  d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER],
-  //      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
-  //
-  //  if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL) {
-  //    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
-  //    acpi_bootstrap_64(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW],
-  //        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW]);
-  //  } else {
-  //    kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
-  //    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
-  //    acpi_bootstrap_32(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD],
-  //        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
-  //  }
-  //
-  //  intr_init();
-  //
-  //  mm_bootstrap((uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
-  //
+  kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != NULL);
+  kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER] != 0);
+  d_vesa_bootstrap(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER],
+      _boot_info.lens[_MULTI_BOOT_TAG_TYPE_FRAME_BUFFER]);
+
+  if (_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != NULL) {
+    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW] != 0);
+    acpi_bootstrap_64(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_NEW],
+        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_NEW]);
+  } else {
+    kernel_assert(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != NULL);
+    kernel_assert(_boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD] != 0);
+    acpi_bootstrap_32(_boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_ACPI_OLD],
+        _boot_info.lens[_MULTI_BOOT_TAG_TYPE_ACPI_OLD]);
+  }
+
+  intr_init();
+
+  //mem_bootstrap_2();
+  log_line_format(LOG_LEVEL_INFO, "Boot stack bottom: %lu, top: %lu",
+      (uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
+
+  mem_bootstrap_2();
+
   //  log_enable_video_write();
   //  /* Switching from boot time stack to new stack in high half.
   //   * It is safer to do it in kernel_main as it is the entry function of C code,

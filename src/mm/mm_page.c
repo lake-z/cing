@@ -6,12 +6,6 @@
 #include "mm_private.h"
 #include "video.h"
 
-typedef enum {
-  PAGE_SIZE_4K = PAGE_SIZE_VALUE_4K,
-  PAGE_SIZE_2M = 2 * 1024 * 1024,
-  PAGE_SIZE_1G = 1024 * 1024 * 1024,
-} page_size_t;
-
 typedef u64_t page_no_t;
 typedef u16_t tab_entry_index_t;
 

@@ -1,4 +1,5 @@
 #include "cpu.h"
+#include "log.h"
 
 u64_t cpu_read_cr2(void)
 {

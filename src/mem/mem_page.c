@@ -1,13 +1,8 @@
 /* Memory virtual address space management. */
 #include "cpu.h"
-#include "mem_private.h"
 #include "kernel_panic.h"
-
-typedef enum {
-  PAGE_SIZE_4K = PAGE_SIZE_VALUE_4K,
-  PAGE_SIZE_2M = 2 * 1024 * 1024,
-  PAGE_SIZE_1G = 1024 * 1024 * 1024,
-} page_size_t;
+#include "log.h"
+#include "mem_private.h"
 
 typedef struct {
   bo_t present : 1;
@@ -37,7 +32,11 @@ base_private const tab_lev_t _TAB_LEV_HIGHEST = TAB_LEV_4;
 #define _TAB_ENTRY_LEN 8
 #define _TAB_ENTRY_COUNT 512
 
-base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(PAGE_SIZE_VALUE_4K);
+base_private tab_entry_t _tab_4_bootstrap[_TAB_ENTRY_COUNT] base_align(
+    PAGE_SIZE_VALUE_4K);
+
+base_private tab_entry_t _tab_4[_TAB_ENTRY_COUNT] base_align(
+    PAGE_SIZE_VALUE_4K);
 
 base_private void _tab_load_root(tab_entry_t *p4)
 {
@@ -121,10 +120,8 @@ base_private void _tab_entry_init(tab_entry_t *e,
   }
 }
 
-/* Mapping used during bootstrap stage 0 and 1. 
- * In this early stage, vitual addresses are always the same as physical 
- * addresses */
-base_private bo_t _map_bootstrap_1(uptr_t va, uptr_t pa)
+/* Mapping used during bootstrap. */
+base_private bo_t _map_bootstrap(tab_entry_t *root, uptr_t va, uptr_t pa)
 {
   tab_entry_t *tab;
   u16_t entry_idx;
@@ -135,7 +132,8 @@ base_private bo_t _map_bootstrap_1(uptr_t va, uptr_t pa)
   kernel_assert(mem_align_check((uptr_t)va, PAGE_SIZE_2M));
   kernel_assert(mem_align_check((uptr_t)pa, PAGE_SIZE_2M));
 
-  tab = _tab_4;
+  ok = true;
+  tab = root;
   for (tab_lev_t lv = _TAB_LEV_HIGHEST; lv > TAB_LEV_2; lv--) {
     entry_idx = _tab_entry_idx(va, lv);
     entry = &(tab[entry_idx]);
@@ -146,7 +144,7 @@ base_private bo_t _map_bootstrap_1(uptr_t va, uptr_t pa)
       kernel_assert(_tab_entry_is_zero(entry));
 
       frame = NULL;
-      ok = mem_frame_alloc_bootstrap(&frame);
+      ok = mem_frame_alloc(&frame);
       if (ok) {
         kernel_assert(frame != NULL);
         _tab_entry_init(entry, lv, true, true, (uptr_t)frame, PAGE_SIZE_4K);
@@ -192,12 +190,118 @@ void mem_page_bootstrap_1(void)
   kernel_assert(ker_z < phy_z);
   kernel_assert(sizeof(tab_entry_t) == _TAB_ENTRY_LEN);
 
-  _tab_zero(_tab_4);
+  _tab_zero(_tab_4_bootstrap);
 
   for (va = 0; (va + PAGE_SIZE_2M) < pa_max; va += PAGE_SIZE_2M) {
-    ok = _map_bootstrap_1(va, va);
+    ok = _map_bootstrap(_tab_4_bootstrap, va, va);
     kernel_assert(ok);
   }
+
+  _tab_load_root(_tab_4_bootstrap);
+}
+
+base_private void _map_page(tab_entry_t *root, uptr_t va, uptr_t pa)
+{
+  tab_entry_t *tab;
+  u16_t entry_idx;
+  tab_entry_t *entry;
+
+  kernel_assert(mem_align_check(va, PAGE_SIZE_4K));
+  kernel_assert(mem_align_check(pa, PAGE_SIZE_4K));
+
+  tab = root;
+  for (tab_lev_t lv = _TAB_LEV_HIGHEST; lv > TAB_LEV_1; lv--) {
+    entry_idx = _tab_entry_idx(va, lv);
+    entry = &(tab[entry_idx]);
+
+    if (!_tab_entry_present(entry)) {
+      bo_t ok;
+      byte_t *frame;
+
+      kernel_assert(_tab_entry_is_zero(entry));
+
+      frame = NULL;
+      ok = mem_frame_alloc(&frame);
+      kernel_assert(ok);
+      kernel_assert(frame != NULL);
+
+      _tab_entry_init(entry, lv, true, true, (uptr_t)frame, PAGE_SIZE_4K);
+      _tab_zero((tab_entry_t *)frame);
+    }
+
+    /* Iterate to next level of page table. */
+    tab = (tab_entry_t *)_tab_entry_get_pa(entry);
+  }
+
+  entry_idx = _tab_entry_idx(va, TAB_LEV_1);
+  entry = &(tab[entry_idx]);
+  kernel_assert(_tab_entry_is_zero(entry));
+  _tab_entry_init(entry, TAB_LEV_1, true, true, (uptr_t)pa, PAGE_SIZE_4K);
+}
+
+base_private void _map_impl(tab_entry_t *root, /*Root of page table hierachy */
+    uptr_t va,    /* Start of virtual address to be mapped */
+    ucnt_t n_pg,  /* Page count of virtual address to be mapped */
+    pa_list_t *pa /* Physical address to be mapped */
+)
+{
+  u64_t pa_idx;
+  u64_t pa_page;
+  kernel_assert(mem_align_check(va, PAGE_SIZE_4K));
+  kernel_assert_d(n_pg == pa_list_n_page(pa));
+
+  pa_idx = 0;
+  pa_page = 0;
+  for (u64_t i = 0; i < n_pg;) {
+    kernel_assert_d(pa_idx < pa_list_n_range(pa));
+    if (pa_page < pa_list_range_n_page(pa, pa_idx)) {
+      uptr_t pg_va = va + i * PAGE_SIZE_4K;
+      uptr_t pg_pa = pa_list_range_pa(pa, pa_idx) + pa_page * PAGE_SIZE_4K;
+      _map_page(root, pg_va, pg_pa);
+      i++;
+      pa_page++;
+    } else {
+      pa_idx++;
+      pa_page = 0;
+    }
+  }
+}
+
+void mem_page_map(uptr_t va, /* Start of virtual address to be mapped */
+    ucnt_t n_pg,             /* Page count of virtual address to be mapped */
+    pa_list_t *pa            /* Physical address to be mapped */
+)
+{
+  kernel_assert_d(boot_stage > MEM_BOOTSTRAP_STAGE_0);
+  _map_impl(_tab_4, va, n_pg, pa);
+}
+
+void mem_page_bootstrap_2(void)
+{
+  uptr_t ker_0_va;
+  uptr_t ker_z_va;
+  uptr_t ker_n_page;
+  pa_list_t *pa;
+
+  _tab_zero(_tab_4);
+
+  /* Map since address 0, since otherwise we may aceess not aviabole address. */
+  ker_0_va = 0;
+  kernel_assert(mem_align_check(ker_0_va, PAGE_SIZE_4K));
+
+  ker_z_va = mem_pa_ker_end();
+  kernel_assert(mem_align_check(ker_0_va, PAGE_SIZE_4K));
+
+  ker_n_page = (ker_z_va - ker_0_va) / PAGE_SIZE_4K;
+
+  pa = pa_list_new_bootstrap(1);
+  /* A virtual to physical address direct mapping. */
+  pa_list_set_range(pa, 0, ker_0_va, ker_n_page);
+
+  _map_impl(_tab_4, ker_0_va, ker_n_page, pa);
+
+  pa_list_free_bootstrap(pa);
+  pa = NULL;
 
   _tab_load_root(_tab_4);
 }

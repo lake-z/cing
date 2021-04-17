@@ -5,6 +5,11 @@
 
 #define PAGE_SIZE_VALUE_LOG_4K 12
 #define PAGE_SIZE_VALUE_4K 4096
+typedef enum {
+  PAGE_SIZE_4K = PAGE_SIZE_VALUE_4K,
+  PAGE_SIZE_2M = 2 * 1024 * 1024,
+  PAGE_SIZE_1G = 1024 * 1024 * 1024,
+} page_size_t;
 
 /* Virtual address layout of kernel
  +---------------------------+-----------------------+

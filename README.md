@@ -27,6 +27,8 @@ efbf8000-efc00000 00008000 -rw
 tells us that the 0x00040000 bytes of memory from 0xef7c0000 to 0xef800000 are
 mapped read/write and user-accessible, while the memory from 0xefbf8000 to
 0xefc00000 is mapped read/write, but only kernel-accessible.
+
+info tlb
 ```
 
 ## gdb
@@ -34,6 +36,22 @@ mapped read/write and user-accessible, while the memory from 0xefbf8000 to
 ```
 target remote localhost:1234
 symbol-file kernel.sym
+
+layout split 
+Divides the window into two parts - one of them displaying the source code, the 
+other one the corresponding assembly.
+
+ni
+next instruction
+
+si 
+step instruction
+
+set disassembly-flavor intel
+
+set print asm-demangle
+demangles C++ names in assembly view
+
 ```
 
 ## cmake
