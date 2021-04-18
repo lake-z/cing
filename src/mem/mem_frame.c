@@ -69,6 +69,10 @@ base_private usz_t _frame_count_bootstrap;
 base_private byte_t _pa_list_bootstrap_pool[_PA_LIST_CAP_BOOTSTRAP];
 base_private byte_t *_pa_list_bootstrap_next;
 
+/* Frame map used to manage physical memory heap. */
+base_private u64_t *_frame_map;
+base_private u64_t _frame_map_cap;
+
 base_private void _bootstrap_mmap_info(const byte_t *ptr, usz_t size)
 {
   u32_t entry_size;
@@ -112,6 +116,10 @@ base_private void _bootstrap_mmap_info(const byte_t *ptr, usz_t size)
     kernel_assert(_sec_cnt < _SECTION_CAP);
     _sections[_sec_cnt].base = (uptr_t)base;
     _sections[_sec_cnt].len = len;
+    kernel_assert(mem_align_check(_sections[_sec_cnt].base, PAGE_SIZE_4K));
+
+    log_line_format(LOG_LEVEL_INFO, "Availabe physical memory: %lu, len %lu",
+        _sections[_sec_cnt].base, _sections[_sec_cnt].len);
 
     if (_sec_cnt > 0) {
       uptr_t last_end = _sections[_sec_cnt - 1].base;
@@ -203,20 +211,6 @@ base_private mem_heap_t *_heaps[_SECTION_CAP];
 base_private usz_t _heap_cnt;
 
 
-base_private bo_t _pa_overlaps_pcie_cfg_space(uptr_t pa, usz_t len)
-{
-  ucnt_t cnt = d_pcie_group_get_cnt();
-  bo_t ret = false;
-  for (ucnt_t i = 0; i < cnt; i++) {
-    uptr_t cfg_start = d_pcie_group_get_cfg_pa(i);
-
-    ret = pa_range_overlaps(pa, len, cfg_start, d_pcie_group_get_cfg_len());
-    if (ret)
-      break;
-  }
-  return ret;
-}
-
 void mem_frame_bootstrap_2(void)
 {
   uptr_t fb = (uptr_t)d_vesa_get_frame_buffer();
@@ -247,6 +241,74 @@ void mem_frame_bootstrap_2(void)
   }
 }
 */
+
+base_private bo_t _pa_overlaps_pcie_cfg_space(uptr_t pa, usz_t len)
+{
+  ucnt_t cnt = d_pcie_group_get_cnt();
+  bo_t ret = false;
+  for (ucnt_t i = 0; i < cnt; i++) {
+    uptr_t cfg_start = d_pcie_group_get_cfg_pa(i);
+
+    ret = pa_range_overlaps(pa, len, cfg_start, d_pcie_group_get_cfg_len());
+    if (ret)
+      break;
+  }
+  return ret;
+}
+
+base_private bo_t _pa_overlaps_vesa_frame_buffer(uptr_t pa, usz_t len)
+{
+  uptr_t fb = (uptr_t)d_vesa_get_frame_buffer();
+  u64_t fb_len = d_vesa_get_frame_buffer_len();
+  return pa_range_overlaps(pa, len, fb, fb_len);
+}
+
+void mem_frame_bootstrap_2(void)
+{
+  u64_t pa_len;
+  u64_t map_page_cnt;
+
+  pa_len = 0;
+  for (usz_t i = 0; i < _sec_cnt; i++) {
+    /* Ignore too small physical memory sections. */
+    if (_sections[i].len > 8 * 1024 * 1024) {
+      kernel_assert(
+          !_pa_overlaps_pcie_cfg_space(_sections[i].base, _sections[i].len));
+      kernel_assert(
+          !_pa_overlaps_vesa_frame_buffer(_sections[i].base, _sections[i].len));
+      pa_len += _sections[i].len;
+    }
+  }
+
+  _frame_map_cap = pa_len / PAGE_SIZE_4K * 2;
+  map_page_cnt = _frame_map_cap * 8 / PAGE_SIZE_4K;
+  map_page_cnt += 2; /* At least one page of extra space */
+  _frame_map_cap = map_page_cnt * PAGE_SIZE_4K / sizeof(u64_t);
+  log_line_format(LOG_LEVEL_INFO, "Frames map size: %lu, pages: %lu",
+      _frame_map_cap, map_page_cnt);
+
+  _frame_map = NULL;
+  for (usz_t i = 0; i < _sec_cnt; i++) {
+    /* Ignore too small physical memory sections. */
+    if (_sections[i].len > 8 * 1024 * 1024) {
+      kernel_assert(
+          !_pa_overlaps_pcie_cfg_space(_sections[i].base, _sections[i].len));
+      kernel_assert(
+          !_pa_overlaps_vesa_frame_buffer(_sections[i].base, _sections[i].len));
+      if (_frame_map == NULL) {
+        uptr_t map_end;
+        uptr_t sec_end;
+
+        _frame_map = (u64_t *)mem_align_up(
+            _sections[i].base + PAGE_SIZE_4K, PAGE_SIZE_4K);
+
+        map_end = ((uptr_t)_frame_map) + (map_page_cnt * PAGE_SIZE_4K);
+        sec_end = _sections[i].base + _sections[i].len;
+        kernel_assert(map_end < sec_end);
+      }
+    }
+  }
+}
 
 uptr_t mem_pa_start(void)
 {

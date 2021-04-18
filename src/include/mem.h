@@ -13,6 +13,7 @@ void mem_bootstrap_1(
     usz_t mb_mmap_len      /* Length of @mb_mmap */
 );
 void mem_bootstrap_2(void);
+void mem_bootstrap_3(void);
 
 void mem_page_map(uptr_t va, /* Start of virtual address to be mapped */
     ucnt_t n_pg,             /* Page count of virtual address to be mapped */

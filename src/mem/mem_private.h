@@ -62,6 +62,7 @@ typedef enum {
   MEM_BOOTSTRAP_STAGE_0 = 0,
   MEM_BOOTSTRAP_STAGE_1 = 1,
   MEM_BOOTSTRAP_STAGE_2 = 2,
+  MEM_BOOTSTRAP_STAGE_3 = 2,
   MEM_BOOTSTRAP_STAGE_FINISH = 99,
 } mem_bootstrap_stage_t;
 
@@ -74,6 +75,7 @@ void mem_frame_bootstrap_1(const byte_t *mb_elf,
 void mem_page_bootstrap_1(void);
 void mem_page_bootstrap_2(void);
 void mem_frame_bootstrap_2(void);
+void mem_frame_bootstrap_3(void);
 
 base_must_check bo_t mem_frame_alloc(byte_t **out_frame);
 

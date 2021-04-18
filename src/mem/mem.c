@@ -19,8 +19,15 @@ void mem_bootstrap_1(const byte_t *mb_elf,
 void mem_bootstrap_2(void)
 {
   kernel_assert(boot_stage == MEM_BOOTSTRAP_STAGE_1);
+  mem_frame_bootstrap_2();
   mem_page_bootstrap_2();
   boot_stage = MEM_BOOTSTRAP_STAGE_2;
+}
+
+void mem_bootstrap_3(void)
+{
+  kernel_assert(boot_stage == MEM_BOOTSTRAP_STAGE_2);
+  boot_stage = MEM_BOOTSTRAP_STAGE_3;
 }
 
 void mem_clean(byte_t *mem, usz_t size)

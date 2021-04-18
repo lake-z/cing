@@ -1,9 +1,9 @@
 /* Memory virtual address space management. */
 #include "cpu.h"
+#include "drivers_vesa.h"
 #include "kernel_panic.h"
 #include "log.h"
 #include "mem_private.h"
-#include "drivers_vesa.h"
 
 typedef struct {
   bo_t present : 1;
@@ -317,4 +317,8 @@ void mem_page_bootstrap_2(void)
   pa = NULL;
 
   _tab_load_root(_tab_4);
+}
+
+void mem_page_bootstrap_3(void)
+{
 }

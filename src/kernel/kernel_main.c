@@ -212,6 +212,8 @@ void kernal_main(uptr_t multi_boot_info)
 
   log_enable_video_write();
 
+  mem_bootstrap_3();
+
   //  /* Switching from boot time stack to new stack in high half.
   //   * It is safer to do it in kernel_main as it is the entry function of C code,
   //   * and will never get return. */
