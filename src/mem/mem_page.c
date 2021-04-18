@@ -3,6 +3,7 @@
 #include "kernel_panic.h"
 #include "log.h"
 #include "mem_private.h"
+#include "drivers_vesa.h"
 
 typedef struct {
   bo_t present : 1;
@@ -280,7 +281,9 @@ void mem_page_bootstrap_2(void)
 {
   uptr_t ker_0_va;
   uptr_t ker_z_va;
-  uptr_t ker_n_page;
+  u64_t ker_n_page;
+  uptr_t fb;
+  u64_t fb_len;
   pa_list_t *pa;
 
   _tab_zero(_tab_4);
@@ -295,10 +298,20 @@ void mem_page_bootstrap_2(void)
   ker_n_page = (ker_z_va - ker_0_va) / PAGE_SIZE_4K;
 
   pa = pa_list_new_bootstrap(1);
-  /* A virtual to physical address direct mapping. */
-  pa_list_set_range(pa, 0, ker_0_va, ker_n_page);
 
+  /* Mapping kernel binary, a virtual to physical address direct mapping. */
+  pa_list_set_range(pa, 0, ker_0_va, ker_n_page);
   _map_impl(_tab_4, ker_0_va, ker_n_page, pa);
+
+  /* Mapping VESA frame buffer. */
+  fb = (uptr_t)d_vesa_get_frame_buffer();
+  kernel_assert(mem_align_check(fb, PAGE_SIZE_4K));
+  fb_len = d_vesa_get_frame_buffer_len();
+  kernel_assert((fb_len % PAGE_SIZE_4K) == 0);
+  kernel_assert(fb_len < (VA_48_FRAME_BUFFER_END - VA_48_FRAME_BUFFER));
+  pa_list_set_range(pa, 0, fb, fb_len / PAGE_SIZE_4K);
+  d_vesa_set_frame_buffer((byte_t *)VA_48_FRAME_BUFFER);
+  _map_impl(_tab_4, VA_48_FRAME_BUFFER, fb_len / PAGE_SIZE_4K, pa);
 
   pa_list_free_bootstrap(pa);
   pa = NULL;
