@@ -176,6 +176,8 @@ void kernal_main(uptr_t multi_boot_info)
       _boot_info.ptrs[_MULTI_BOOT_TAG_TYPE_MMAP],
       _boot_info.lens[_MULTI_BOOT_TAG_TYPE_MMAP]);
 
+  log_enable_video_write();
+
   //  uptr_t rbp;
   //  uptr_t rsp;
   //  u64_t rbp_off;
@@ -204,15 +206,12 @@ void kernal_main(uptr_t multi_boot_info)
 
   intr_init();
 
-  //mem_bootstrap_2();
   log_line_format(LOG_LEVEL_INFO, "Boot stack bottom: %lu, top: %lu",
       (uptr_t)&boot_stack_bottom, (uptr_t)&boot_stack_top);
 
   mem_bootstrap_2();
 
-  log_enable_video_write();
-
-  mem_bootstrap_3();
+  //mem_bootstrap_3();
 
   //  /* Switching from boot time stack to new stack in high half.
   //   * It is safer to do it in kernel_main as it is the entry function of C code,

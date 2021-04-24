@@ -99,8 +99,6 @@ void acpi_bootstrap_64(const byte_t *multi_boot_info, usz_t len)
   log_line_format(LOG_LEVEL_INFO, "ACPI 64 XSDT paddr: %lu", rsdp->xsdt_padd);
 
   _init_xsdt((xsdt_t *)(rsdp->xsdt_padd));
-
-  kernel_panic("TODO: ACPI 64 init");
 }
 
 /*****************************************************************************

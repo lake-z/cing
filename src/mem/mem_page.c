@@ -318,7 +318,3 @@ void mem_page_bootstrap_2(void)
 
   _tab_load_root(_tab_4);
 }
-
-void mem_page_bootstrap_3(void)
-{
-}
