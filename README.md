@@ -69,7 +69,9 @@ cmake .. -DTOOL_NASM=/home/t4/wanghu/os/install/bin/nasm -DTOOL_CLANG=/usr/local
 /usr/local/histore-clang/bin/clang-format -style=file -fallback-style=none -sort-includes -i src/kernel/*.c
 ```
 
-## for linux hack
+
+
+## for linux hacking
 
 ### build kernel
 
@@ -87,11 +89,16 @@ Check the configuration. Set CONFIG_DEBUG_INFO=y if not configured.
 
 ```
 mkdir etc dev mnt 
-
 mkdir -p proc sys tmp mnt 
-
 mkdir -p etc/init.d/ 
 
+mknod console c 5 1
+mknod null c 1 3
+mknod tty1 c 4 1
+
+chmod 755 etc/init.d/rcS
+chmod 755 etc/inittab
+cd dev
 mknod console c 5 1
 mknod null c 1 3
 mknod tty1 c 4 1
@@ -99,17 +106,16 @@ mknod tty1 c 4 1
 dd if=/dev/zero of=./rootfs.ext3 bs=1M count=32
 
 mkfs.ext3 rootfs.ext3
-mkdir fs
+mkdir rootfs.mnt
 
-mount -o loop rootfs.ext3 ./fs
+mount -o loop rootfs.ext3 rootfs.mnt
 
-
-cp -rv _install/* fs
+cp -rvf ./rootfs/* ./rootfs.mnt
 
 
 gzip --best -c rootfs.ext3 > rootfs.img.gz
 
-- https://www.bilibili.com/read/cv11271232?spm_id_from=333.999.0.0
+https://www.bilibili.com/read/cv11271232?spm_id_from=333.999.0.0
 
 ```
 
@@ -140,7 +146,10 @@ $ gdb vmlinux
 Make symbol file from vmlinux kernel image. vmlinux file is located in the kernel source directory (generated after compilation). 
 objcopy --only-keep-debug vmlinux kernel.sym
 
+```
 
+### kernel logging
 
-
+```
+https://www.kernel.org/doc/html/latest/core-api/printk-basics.html
 ```
